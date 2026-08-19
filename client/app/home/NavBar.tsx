@@ -48,7 +48,7 @@ const NavBar = () => {
           </button>
         </div>
       </div>
-      <nav className="w-full ">
+      {/* <nav className="w-full ">
         <ul className="bg-(--foreground)/90 text-(--background) flex justify-center items-center gap-10 p-3">
           {navLinks.map((link) => (
             <li key={link.href}>
@@ -65,7 +65,7 @@ const NavBar = () => {
             </li>
           ))}
         </ul>
-      </nav>
+      </nav> */}
     </>
   );
 };

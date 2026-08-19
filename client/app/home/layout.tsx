@@ -1,6 +1,8 @@
 import { ReactNode } from "react";
 import NavBar from "./NavBar";
 import { Metadata } from "next";
+import { Sidebar } from "lucide-react";
+import SideBar from "./SideBar";
 
 interface Props {
   children: ReactNode;
@@ -12,11 +14,14 @@ export const metadata: Metadata = {
 };
 const HomeLayout = ({ children }: Props) => {
   return (
-    <div className="h-dvh w-dvw overflow-auto">
-      <header className="w-full min-h-15 bg-(--background) shadow flex flex-col justify-between items-center z-50">
+    <div className="h-dvh w-dvw flex overflow-auto">
+      <header className="absolute top-0 left-0 w-full min-h-15 bg-(--background) shadow flex flex-col justify-between items-center z-50">
         <NavBar />
       </header>
-      <main className="h-9/10 w-full px-35">{children}</main>
+      <aside>
+        <SideBar />
+      </aside>
+      <main className="h-full w-full px-35 pt-20">{children}</main>
     </div>
   );
 };

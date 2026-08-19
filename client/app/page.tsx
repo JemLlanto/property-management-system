@@ -16,34 +16,8 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const validateUser = async () => {
-      const response = await checkUser();
-      if (response.success) {
-        router.push(`/home`);
-      }
-    };
-
-    validateUser();
+    router.push(`/auth/login`);
   }, []);
 
-  return (
-    <>
-      <div className="relative h-dvh snap-y overflow-y-auto">
-        <header>
-          <NavBar
-            scrollToSection={scrollToSection}
-            refs={{ homeRef, hoursRef, locationRef, reviewsRef }}
-          />
-        </header>
-
-        <main>
-          <section>
-            <Hero web_data={web_data} />
-          </section>
-        </main>
-
-        {/* <Footer /> */}
-      </div>
-    </>
-  );
+  return <></>;
 }
