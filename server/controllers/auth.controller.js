@@ -59,9 +59,16 @@ async function register(req, res) {
     User.addRefreshToken(user, refreshToken);
 
     setAuthCookies(res, accessToken, refreshToken);
-    return res
-      .status(201)
-      .json({ success: true, user: { id: user.user_id, email: user.email } });
+    return res.status(201).json({
+      success: true,
+      user: {
+        id: user.user_id,
+        email: user.email,
+        type: user.type,
+        name: user.name,
+        unit_number: user.unit_number,
+      },
+    });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
   }
@@ -97,7 +104,13 @@ async function login(req, res) {
   setAuthCookies(res, accessToken, refreshToken);
   return res.json({
     success: true,
-    user: { user_id: user.user_id, email: user.email },
+    user: {
+      user_id: user.user_id,
+      email: user.email,
+      type: user.type,
+      name: user.name,
+      unit_number: user.unit_number,
+    },
   });
 }
 
@@ -152,7 +165,13 @@ async function me(req, res) {
   if (!user) return res.status(404).json({ message: "User not found" });
   return res.json({
     success: true,
-    user: { user_id: user.user_id, email: user.email },
+    user: {
+      user_id: user.user_id,
+      email: user.email,
+      type: user.type,
+      name: user.name,
+      unit_number: user.unit_number,
+    },
   });
 }
 
