@@ -6,6 +6,26 @@ import { options } from "./auth.service";
 const BASE = process.env.NEXT_PUBLIC_API_URL;
 const DEFAULT_TIMEOUT_MS = 15000;
 
+// Shape of an item as returned by the server (Prisma maps item_id, etc.)
+interface ServerItem {
+  item_id: number;
+  name: string;
+  quantity: number;
+  price: number | string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Normalizes a server item (item_id) into the client shape (id)
+const normalizeItem = (item: ServerItem): ItemDataProps => ({
+  id: item.item_id,
+  name: item.name,
+  quantity: item.quantity,
+  price: Number(item.price),
+  created_at: item.created_at,
+  updated_at: item.updated_at,
+});
+
 export interface ItemDataProps {
   id: number;
   name: string;
@@ -55,7 +75,7 @@ export const itemService = async (
 
   try {
     // Determine the API route based on the method and itemId
-    const apiRoute = itemId ? `items/${itemId}` : `items`;
+    const apiRoute = itemId ? `item/${itemId}` : `item`;
     // Determine Error Message to be displayed
     const errorMessage =
       method === "POST"
@@ -72,28 +92,32 @@ export const itemService = async (
       `${BASE}/${apiRoute}`,
       options(method, body, controller.signal),
     );
-    // console.log("response: ", response.status);
 
-    const data = await response.json();
-    // Getting the value of response status
+    const payload = await response.json();
     const status = response.status;
-    // console.log("data: ", data, status);
 
     if (!response.ok) {
-      // Closing modal to see the error message
       Swal.fire({
         icon: "error",
         title: errorMessage,
         text:
           status === 500
             ? "Something went wrong. Please try again."
-            : data.message || "Something went wrong. Please try again.",
+            : payload.message || "Something went wrong. Please try again.",
       });
 
-      return data;
+      return { success: false, ...payload };
     }
 
-    return data;
+    // Normalize the server response into a consistent `{ success, data }` shape
+    if (Array.isArray(payload.items)) {
+      return { success: true, data: payload.items.map(normalizeItem) };
+    }
+    if (payload.item) {
+      return { success: true, data: normalizeItem(payload.item) };
+    }
+
+    return payload;
   } catch (err) {
     // Check if the error is due to a timeout
     const isTimeout = err instanceof DOMException && err.name === "AbortError";
