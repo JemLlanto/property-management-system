@@ -6,6 +6,10 @@ import StoreProvider from "@/store/StoreProvider";
 const mainFont = Elms_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  // Elms Sans is newer than this Next.js version's precalculated font metrics,
+  // so automatic fallback-font tuning (size-adjust etc.) can't be computed.
+  // Disable it to silence the build warning — layout impact is negligible.
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {
