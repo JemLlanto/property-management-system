@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+  
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  user_id       String   @id
+  email         String   @unique
+  password      String
+  refresh_tokens Json    @default("[]")
+  created_at    DateTime? @default(now()) @map("created_at")
+  updated_at    DateTime? @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Item {
+  item_id    Int       @id @default(autoincrement()) @map("item_id")
+  name       String
+  user_id    String    @map("user_id")
+  quantity   Int
+  price      Decimal   @db.Decimal(10, 2)
+  created_at DateTime? @default(now()) @map("created_at")
+  updated_at DateTime? @default(now()) @updatedAt @map("updated_at")
+
+  @@index([user_id])
+  @@map("item")
+}
+
+model Stock {
+  id    Int    @id @default(autoincrement())
+  name  String @db.VarChar(100)
+  specs String @db.VarChar(100)
+
+  @@map("stocks")
+}
+
+model StockItem {
+  id           Int       @id @default(autoincrement())
+  stockId      Int       @map("stockId")
+  serialNumber String?   @map("serialNumber") @db.VarChar(100)
+  specs        String?   @db.Text
+  PRDate       String?   @map("PRDate") @db.VarChar(100)
+  receivedDate DateTime? @map("receivedDate") @db.Date
+  deployedDate DateTime? @map("deployedDate") @db.Date
+  station      String?   @db.VarChar(100)
+  department   String?   @db.VarChar(100)
+  remarks      String?   @db.VarChar(100)
+
+  @@index([stockId])
+  @@map("stock_items")
+}
+
