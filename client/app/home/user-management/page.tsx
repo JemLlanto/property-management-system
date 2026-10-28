@@ -1,50 +1,47 @@
 "use client";
+
 import { checkUser } from "@/utils/auth.helper";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
-import { Pencil, Trash2, Plus, X } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setUser } from "@/store/userDataSlice";
-import { setItems } from "@/store/itemData.slice";
-import {
-  emptyForm,
-  getChangedFields,
-  ItemDataProps,
-  ItemFormDataProps,
-  itemService,
-} from "@/services/Item.service";
 import { setIsLoading } from "@/store/isLoading.slice";
+import {
+  deleteUser,
+  emptyUserForm,
+  getUsers,
+  UserDataProps,
+  UserFormDataProps,
+} from "@/services/user.service";
 import AddUserModal from "./AddUserModal";
 import UserTable from "./UserTable";
 
-const HomePage = () => {
+const UserManagementPage = () => {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const items = useAppSelector((state) => state.itemData);
   const isLoading = useAppSelector((state) => state.loading.isLoading);
-  const [form, setForm] = useState<ItemFormDataProps>(emptyForm);
+  const currentUser = useAppSelector((state) => state.userData);
 
-  const [currentItems, setCurrentItems] = useState<ItemDataProps[]>(items);
+  const [users, setUsers] = useState<UserDataProps[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [originalItem, setOriginalItem] =
-    useState<ItemFormDataProps>(emptyForm);
-  const [errors, setErrors] = useState<Partial<ItemFormDataProps>>({});
+  const [editingUser, setEditingUser] = useState<UserDataProps | null>(null);
+  const [form, setForm] = useState<UserFormDataProps>(emptyUserForm);
+  const [originalUser, setOriginalUser] =
+    useState<UserFormDataProps>(emptyUserForm);
+  const [errors, setErrors] = useState<Partial<UserFormDataProps>>({});
 
-  // Checking user authorization
+  // Checking user authorization and loading the user list
   useEffect(() => {
     const validateUser = async () => {
       dispatch(setIsLoading(true));
       try {
         const response = await checkUser();
         if (response.success) {
-          // Set user data
           dispatch(setUser(response.user));
-          // Getting user items
-          const itemRes = await itemService("GET");
-          // Set items data
-          dispatch(setItems(itemRes.data));
+
+          const userRes = await getUsers();
+          setUsers(userRes.users ?? []);
         } else {
           // Redirect to the landing page if not authenticated.
           router.push(`/`);
@@ -52,45 +49,40 @@ const HomePage = () => {
       } catch (err) {
         console.error("Error: ", err);
       } finally {
-        setTimeout(() => {
-          dispatch(setIsLoading(false));
-        }, 100);
+        dispatch(setIsLoading(false));
       }
     };
-    // Calling validateUser function
+
     validateUser();
   }, []);
-  // Update current items on mount
-  useEffect(() => {
-    setCurrentItems(items);
-  }, [items]);
-
-  // console.log("form: ", form);
 
   const openAddModal = () => {
-    setEditingId(null);
-    setForm(emptyForm);
+    setEditingUser(null);
+    setForm(emptyUserForm);
+    setOriginalUser(emptyUserForm);
     setErrors({});
     setIsModalOpen(true);
   };
 
-  const openEditModal = (item: ItemDataProps) => {
-    const form = {
-      name: item.name,
-      quantity: item.quantity,
-      price: item.price,
+  const openEditModal = (user: UserDataProps) => {
+    const nextForm: UserFormDataProps = {
+      email: user.email,
+      type: user.type,
+      name: user.name ?? "",
+      unit_number: user.unit_number ?? "",
     };
-    setEditingId(item.id);
-    setOriginalItem(form);
-    setForm(form);
+
+    setEditingUser(user);
+    setOriginalUser(nextForm);
+    setForm(nextForm);
     setErrors({});
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (item: ItemDataProps) => {
+  const handleDelete = async (user: UserDataProps) => {
     const result = await Swal.fire({
       icon: "warning",
-      title: `Delete "${item.name}"?`,
+      title: `Delete "${user.email}"?`,
       text: "This action cannot be undone.",
       showCancelButton: true,
       confirmButtonText: "Delete",
@@ -101,13 +93,13 @@ const HomePage = () => {
     if (!result.isConfirmed) return;
 
     try {
-      const response = await itemService("DELETE", item.id);
+      const response = await deleteUser(user.user_id);
 
       if (response.success) {
-        setCurrentItems((prev) => prev.filter((i) => i.id !== item.id));
+        setUsers((prev) => prev.filter((u) => u.user_id !== user.user_id));
         Swal.fire({
           icon: "success",
-          title: "Item deleted",
+          title: "User deleted",
           timer: 1000,
           showConfirmButton: false,
         });
@@ -116,33 +108,32 @@ const HomePage = () => {
       console.error("Unexpected Error: ", err);
     }
   };
-  return (
-    <>
-      <div className="pt-2">
-        <UserTable
-          isLoading={isLoading}
-          currentItems={currentItems}
-          openAddModal={openAddModal}
-          openEditModal={openEditModal}
-          handleDelete={handleDelete}
-        />
 
-        {/* Add/Edit Modal */}
-        {isModalOpen && (
-          <AddUserModal
-            editingId={editingId}
-            form={form}
-            originalItem={originalItem}
-            errors={errors}
-            setCurrentItems={setCurrentItems}
-            setForm={setForm}
-            setIsModalOpen={setIsModalOpen}
-            setErrors={setErrors}
-          />
-        )}
-      </div>
-    </>
+  return (
+    <div className="pt-2">
+      <UserTable
+        isLoading={isLoading}
+        users={users}
+        openAddModal={openAddModal}
+        openEditModal={openEditModal}
+        handleDelete={handleDelete}
+      />
+
+      {/* Add/Edit Modal */}
+      {isModalOpen && (
+        <AddUserModal
+          editingUser={editingUser}
+          form={form}
+          originalUser={originalUser}
+          errors={errors}
+          setUsers={setUsers}
+          setForm={setForm}
+          setIsModalOpen={setIsModalOpen}
+          setErrors={setErrors}
+        />
+      )}
+    </div>
   );
 };
 
-export default HomePage;
+export default UserManagementPage;

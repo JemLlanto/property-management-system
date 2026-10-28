@@ -1,48 +1,58 @@
+"use client";
+
 import {
-  emptyForm,
-  getChangedFields,
-  ItemDataProps,
-  ItemFormDataProps,
-  itemService,
-} from "@/services/Item.service";
+  createUser,
+  emptyUserForm,
+  requiresUnitNumber,
+  UserDataProps,
+  UserFormDataProps,
+  UserType,
+  USER_TYPES,
+  updateUser,
+} from "@/services/user.service";
 import { X } from "lucide-react";
-import React, { Dispatch, SetStateAction, useState } from "react";
+import React, { Dispatch, SetStateAction } from "react";
 import Swal from "sweetalert2";
 
 interface ModalProps {
-  editingId: number | null;
-  originalItem: ItemFormDataProps;
-  form: ItemFormDataProps;
-  errors: Partial<ItemFormDataProps>;
-  setCurrentItems: Dispatch<SetStateAction<ItemDataProps[]>>;
-  setForm: Dispatch<SetStateAction<ItemFormDataProps>>;
+  editingUser: UserDataProps | null;
+  form: UserFormDataProps;
+  originalUser: UserFormDataProps;
+  errors: Partial<UserFormDataProps>;
+  setUsers: Dispatch<SetStateAction<UserDataProps[]>>;
+  setForm: Dispatch<SetStateAction<UserFormDataProps>>;
   setIsModalOpen: Dispatch<SetStateAction<boolean>>;
-  setErrors: Dispatch<SetStateAction<Partial<ItemFormDataProps>>>;
+  setErrors: Dispatch<SetStateAction<Partial<UserFormDataProps>>>;
 }
 
 const AddUserModal = ({
   form,
-  editingId,
-  originalItem,
+  editingUser,
+  originalUser,
   errors,
-  setCurrentItems,
+  setUsers,
   setForm,
   setIsModalOpen,
   setErrors,
 }: ModalProps) => {
   const closeModal = () => {
     setIsModalOpen(false);
-    setForm(emptyForm);
+    setForm(emptyUserForm);
     setErrors({});
   };
 
   const validate = (): boolean => {
-    const newErrors: Partial<ItemFormDataProps> = {};
-    if (!form.name.trim()) newErrors.name = "Item name is required";
-    if (!form.quantity || Number(form.quantity) <= 0)
-      newErrors.quantity = "Quantity must be greater than 0";
-    if (!form.price || Number(form.price) < 0)
-      newErrors.price = "Price must be a valid amount";
+    const newErrors: Partial<UserFormDataProps> = {};
+
+    if (!form.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      newErrors.email = "Please enter a valid email address";
+    }
+
+    if (requiresUnitNumber(form.type) && !form.unit_number.trim()) {
+      newErrors.unit_number = "Unit number is required for Unit Owner";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -51,69 +61,65 @@ const AddUserModal = ({
   const handleSubmit = async () => {
     if (!validate()) return;
 
-    if (editingId !== null) {
-      // Edit existing item
+    if (editingUser) {
+      // Update existing user — send only the changed fields
       try {
-        const changes = getChangedFields(originalItem, form);
+        const changes: Partial<UserFormDataProps> = {};
+        (Object.keys(form) as (keyof UserFormDataProps)[]).forEach((key) => {
+          if (form[key] !== originalUser[key]) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (changes as any)[key] = form[key];
+          }
+        });
 
-        const response = await itemService("PATCH", editingId, changes);
+        const response = await updateUser(editingUser.user_id, changes);
 
         if (response.success) {
-          // Prepare the updated data
-          const updatedItem: ItemDataProps = {
-            id: response.data.id,
-            name: response.data.name,
-            quantity: response.data.quantity,
-            price: response.data.price,
-            created_at: response.data.created_at,
-            updated_at: response.data.updated_at,
-          };
-          // Update the changed item
-          setCurrentItems((prev) =>
-            prev.map((item) =>
-              item.id === updatedItem.id ? updatedItem : item,
-            ),
+          const updated: UserDataProps = response.user;
+
+          setUsers((prev) =>
+            prev.map((u) => (u.user_id === updated.user_id ? updated : u)),
           );
 
-          // Success Message
           Swal.fire({
             icon: "success",
-            title: "Item updated",
+            title: "User updated",
             timer: 1200,
             showConfirmButton: false,
           });
         }
       } catch (err) {
-        console.error("Error Occured: ", err);
+        console.error("Error Occurred: ", err);
       }
     } else {
-      // Add new item
+      // Create new user
       try {
-        const response = await itemService("POST", undefined, form);
+        const response = await createUser(form);
+
         if (response.success) {
-          const newItem: ItemDataProps = {
-            id: response.data.id,
-            name: response.data.name,
-            quantity: response.data.quantity,
-            price: response.data.price,
-            created_at: response.data.created_at,
-            updated_at: response.data.updated_at,
-          };
-          setCurrentItems((prev) => [newItem, ...prev]);
+          setUsers((prev) => [response.user, ...prev]);
+
+          // Show the temporary password once so the admin can share it
           Swal.fire({
             icon: "success",
-            title: "Item added",
-            timer: 1200,
-            showConfirmButton: false,
+            title: "User created",
+            html: `
+              <p style="margin-bottom:8px">Share this temporary password with the user:</p>
+              <code style="font-size:1.1em;font-weight:bold;user-select:all">${response.tempPassword}</code>
+            `,
+            confirmButtonText: "Done",
           });
         }
       } catch (err) {
-        console.error("Error Occured: ", err);
+        console.error("Error Occurred: ", err);
       }
     }
 
     closeModal();
   };
+
+  const unitNumberRequired = requiresUnitNumber(form.type);
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
       <div className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6 relative">
@@ -126,68 +132,88 @@ const AddUserModal = ({
         </button>
 
         <h3 className="text-lg font-semibold text-neutral-800 mb-4">
-          {editingId !== null ? "Edit Item" : "Add Item"}
+          {editingUser ? "Edit User" : "Add User"}
         </h3>
 
         <div className="space-y-3">
+          {/* Email */}
           <div>
             <label className="block text-sm font-medium text-neutral-600 mb-1">
-              Item Name
+              Email <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800 ${
+                errors.email ? "border-red-400" : "border-neutral-300"
+              }`}
+              placeholder="user@example.com"
+            />
+            {errors.email && (
+              <p className="text-xs text-red-500 mt-1">{errors.email}</p>
+            )}
+          </div>
+
+          {/* User Type dropdown — defaults to Unit Owner */}
+          <div>
+            <label className="block text-sm font-medium text-neutral-600 mb-1">
+              User Type
+            </label>
+            <select
+              value={form.type}
+              onChange={(e) =>
+                setForm({ ...form, type: e.target.value as UserType })
+              }
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800 bg-white"
+            >
+              {USER_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Unit Number — required only when type is Unit Owner */}
+          <div>
+            <label className="block text-sm font-medium text-neutral-600 mb-1">
+              Unit Number{" "}
+              {unitNumberRequired ? (
+                <span className="text-red-500">*</span>
+              ) : (
+                <span className="text-neutral-400 text-xs">(optional)</span>
+              )}
+            </label>
+            <input
+              type="text"
+              value={form.unit_number}
+              onChange={(e) =>
+                setForm({ ...form, unit_number: e.target.value })
+              }
+              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800 ${
+                errors.unit_number ? "border-red-400" : "border-neutral-300"
+              }`}
+              placeholder="e.g. 12A"
+            />
+            {errors.unit_number && (
+              <p className="text-xs text-red-500 mt-1">{errors.unit_number}</p>
+            )}
+          </div>
+
+          {/* Unit Owner name — optional */}
+          <div>
+            <label className="block text-sm font-medium text-neutral-600 mb-1">
+              Unit Owner{" "}
+              <span className="text-neutral-400 text-xs">(optional)</span>
             </label>
             <input
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800 ${
-                errors.name ? "border-red-400" : "border-neutral-300"
-              }`}
-              placeholder="e.g. Widget A"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800"
+              placeholder="e.g. Juan Dela Cruz"
             />
-            {errors.name && (
-              <p className="text-xs text-red-500 mt-1">{errors.name}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-600 mb-1">
-              Quantity
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={!form.quantity ? "" : form.quantity}
-              onChange={(e) =>
-                setForm({ ...form, quantity: Number(e.target.value) })
-              }
-              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800 ${
-                errors.quantity ? "border-red-400" : "border-neutral-300"
-              }`}
-              placeholder="0"
-            />
-            {errors.quantity && (
-              <p className="text-xs text-red-500 mt-1">{errors.quantity}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-600 mb-1">
-              Price
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={!form.price ? "" : form.price}
-              onChange={(e) =>
-                setForm({ ...form, price: Number(e.target.value) })
-              }
-              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800 ${
-                errors.price ? "border-red-400" : "border-neutral-300"
-              }`}
-              placeholder="0.00"
-            />
-            {errors.price && (
-              <p className="text-xs text-red-500 mt-1">{errors.price}</p>
-            )}
           </div>
         </div>
 
@@ -202,7 +228,7 @@ const AddUserModal = ({
             onClick={handleSubmit}
             className="flex-1 rounded-lg bg-neutral-900 text-white text-sm font-medium py-2 hover:bg-neutral-700"
           >
-            {editingId !== null ? "Save Changes" : "Add Item"}
+            {editingUser ? "Save Changes" : "Add User"}
           </button>
         </div>
       </div>
