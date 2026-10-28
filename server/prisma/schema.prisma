@@ -11,6 +11,9 @@ model User {
   user_id       String   @id
   email         String   @unique
   password      String
+  type          String   @default("Unit Owner") @map("type") @db.VarChar(20)
+  name          String?  @map("name") @db.VarChar(100)
+  unit_number   String?  @map("unit_number") @db.VarChar(20)
   refresh_tokens Json    @default("[]")
   created_at    DateTime? @default(now()) @map("created_at")
   updated_at    DateTime? @updatedAt @map("updated_at")
