@@ -4,7 +4,9 @@ const { Decimal } = require("@prisma/client");
 
 const prisma = require("../lib/prisma");
 
-async function createUser(email, password) {
+const USER_TYPES = ["Unit Owner", "Admin", "Super Admin"];
+
+async function createUser(email, password, extra = {}) {
   const existing = await findByEmail(email);
 
   if (existing) {
@@ -25,6 +27,9 @@ async function createUser(email, password) {
       user_id: userId,
       email,
       password: passwordHash,
+      type: extra.type || "Unit Owner",
+      name: extra.name || null,
+      unit_number: extra.unit_number || null,
       refresh_tokens: [],
     },
   });
@@ -88,6 +93,89 @@ function hasRefreshToken(user, token) {
   return refreshTokens.includes(token);
 }
 
+// List all users, newest first, without password hashes
+async function getAllUsers() {
+  const users = await prisma.user.findMany({
+    orderBy: { created_at: "desc" },
+  });
+
+  return users.map(toPublicUser);
+}
+
+// Admin-facing create: generates a temporary password and returns it once
+async function createUserByAdmin({ email, type, name, unit_number }) {
+  const existing = await findByEmail(email);
+
+  if (existing) {
+    throw new Error("A user with this email already exists");
+  }
+
+  // Generate a readable temporary password; the user can change it later.
+  const tempPassword = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 10)();
+
+  const user = await prisma.user.create({
+    data: {
+      user_id: customAlphabet(
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+        12,
+      )(),
+      email,
+      password: await bcrypt.hash(tempPassword, 10),
+      type,
+      name: name || null,
+      unit_number:
+        type === "Unit Owner" ? unit_number || null : null,
+      refresh_tokens: [],
+    },
+  });
+
+  return { user: toPublicUser(parseUser(user)), tempPassword };
+}
+
+async function updateUser(user_id, { email, type, name, unit_number }) {
+  const data = {};
+
+  if (email !== undefined) data.email = email;
+  if (type !== undefined) {
+    if (!USER_TYPES.includes(type)) {
+      throw new Error("Invalid user type");
+    }
+    data.type = type;
+  }
+  if (name !== undefined) data.name = name;
+  if (unit_number !== undefined) data.unit_number = unit_number;
+
+  const user = await prisma.user.update({
+    where: { user_id },
+    data,
+  });
+
+  return toPublicUser(parseUser(user));
+}
+
+async function deleteUser(user_id, requesterId) {
+  if (user_id === requesterId) {
+    throw new Error("You cannot delete your own account");
+  }
+
+  const user = await prisma.user.findUnique({ where: { user_id } });
+
+  if (!user) {
+    return null;
+  }
+
+  await prisma.user.delete({ where: { user_id } });
+
+  return true;
+}
+
+// Strip password hash and refresh tokens from any user object
+function toPublicUser(user) {
+  const { password, refresh_tokens, ...safe } = user;
+
+  return safe;
+}
+
 function parseUser(user) {
   return {
     ...user,
@@ -99,7 +187,12 @@ function parseUser(user) {
 }
 
 module.exports = {
+  USER_TYPES,
   createUser,
+  createUserByAdmin,
+  getAllUsers,
+  updateUser,
+  deleteUser,
   findByEmail,
   findById,
   validatePassword,
