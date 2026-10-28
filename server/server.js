@@ -6,6 +6,7 @@ const cors = require("cors");
 
 const authRoutes = require("./routes/auth.route");
 const itemRoutes = require("./routes/item.route");
+const userRoutes = require("./routes/user.route");
 const { requireAuth } = require("./middleware/auth.middleware");
 const { testConnection } = require("./lib/prisma");
 
@@ -23,6 +24,7 @@ app.use(
 
 app.use("/api/auth", authRoutes);
 app.use("/api/item", itemRoutes);
+app.use("/api/users", userRoutes);
 
 // Example protected route
 app.get("/api/protected", requireAuth, (req, res) => {
