@@ -11,6 +11,21 @@ export interface AuthProps {
   password: string;
 }
 
+// Shape returned by the server
+interface ServerUser {
+  user_id?: string;
+  id?: string;
+  username?: string;
+  email: string;
+}
+
+// Normalizes the server user payload into the shape the Redux store expects
+const normalizeUser = (user: ServerUser) => ({
+  id: user.user_id ?? user.id ?? "",
+  username: user.username ?? "",
+  email: user.email ?? "",
+});
+
 // credentials: 'include' is CRITICAL — it tells fetch to send/receive cookies
 // Without it, the browser won't attach the httpOnly cookie to requests
 export const options = (
@@ -37,7 +52,7 @@ export const register = async (
     // console.log("email, password: ", email, password);
 
     const response = await fetch(
-      `${BASE}/register`,
+      `${BASE}/auth/register`,
       options("POST", { username, email, password }, controller.signal),
     );
     // console.log("response: ", response.status);
@@ -61,7 +76,7 @@ export const register = async (
       return data;
     }
 
-    return data;
+    return { ...data, user: data.user ? normalizeUser(data.user) : undefined };
   } catch (err) {
     const isTimeout = err instanceof DOMException && err.name === "AbortError";
 
@@ -89,7 +104,7 @@ export const login = async (
 
   try {
     const response = await fetch(
-      `${BASE}/login`,
+      `${BASE}/auth/login`,
       options("POST", { email, password }, controller.signal),
     );
 
@@ -109,7 +124,7 @@ export const login = async (
       return data;
     }
 
-    return data;
+    return { ...data, user: data.user ? normalizeUser(data.user) : undefined };
   } catch (err) {
     const isTimeout = err instanceof DOMException && err.name === "AbortError";
 
@@ -129,7 +144,7 @@ export const login = async (
 
 // No token to clear manually — the server sends an expired cookie
 export const logout = async () => {
-  const response = await fetch(`${BASE}/logout`, options("POST"));
+  const response = await fetch(`${BASE}/auth/logout`, options("POST"));
   const data = await response.json();
   // console.log("data: ", data);
 
@@ -137,4 +152,8 @@ export const logout = async () => {
 };
 
 export const getMe = () =>
-  fetch(`${BASE}/me`, options("GET")).then((r) => r.json());
+  fetch(`${BASE}/auth/me`, options("GET"))
+    .then((r) => r.json())
+    .then((data) =>
+      data?.user ? { ...data, user: normalizeUser(data.user) } : data,
+    );
