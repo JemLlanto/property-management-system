@@ -12,9 +12,9 @@ const userDataSlice = createSlice({
   initialState,
   reducers: {
     setUser: (state, action) => {
-      state.id = action.payload.id;
+      state.id = action.payload.id ?? "";
       state.username = action.payload.username || "";
-      state.email = action.payload.email;
+      state.email = action.payload.email ?? "";
       state.isLoggedIn = true;
     },
     clearUser: () => initialState,

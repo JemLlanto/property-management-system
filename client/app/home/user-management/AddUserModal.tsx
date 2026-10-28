@@ -89,7 +89,7 @@ const AddUserModal = ({
     } else {
       // Add new item
       try {
-        const response = await itemService("POST", 0, form);
+        const response = await itemService("POST", undefined, form);
         if (response.success) {
           const newItem: ItemDataProps = {
             id: response.data.id,
