@@ -44,7 +44,10 @@ const BuildingModal = ({
 
     if (form.capacity === null || form.capacity === "") {
       newErrors.capacity = "Capacity is required";
-    } else if (!Number.isInteger(Number(form.capacity)) || Number(form.capacity) <= 0) {
+    } else if (
+      !Number.isInteger(Number(form.capacity)) ||
+      Number(form.capacity) <= 0
+    ) {
       newErrors.capacity = "Capacity must be a whole number greater than 0";
     }
 

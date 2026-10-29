@@ -14,6 +14,7 @@ import {
   UserDataProps,
   UserFormDataProps,
 } from "@/services/user.service";
+import { BuildingDataProps, getBuildings } from "@/services/building.service";
 import AddUserModal from "./AddUserModal";
 import UserTable from "./UserTable";
 
@@ -24,6 +25,7 @@ const UserManagementPage = () => {
   const currentUser = useAppSelector((state) => state.userData);
 
   const [users, setUsers] = useState<UserDataProps[]>([]);
+  const [buildings, setBuildings] = useState<BuildingDataProps[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserDataProps | null>(null);
   const [form, setForm] = useState<UserFormDataProps>(emptyUserForm);
@@ -42,6 +44,10 @@ const UserManagementPage = () => {
 
           const userRes = await getUsers();
           setUsers(userRes.users ?? []);
+
+          // Buildings populate the Unit Owner building dropdown
+          const buildingRes = await getBuildings();
+          setBuildings(buildingRes.buildings ?? []);
         } else {
           // Redirect to the landing page if not authenticated.
           router.push(`/`);
@@ -70,6 +76,7 @@ const UserManagementPage = () => {
       type: user.type,
       name: user.name ?? "",
       unit_number: user.unit_number ?? "",
+      building: user.building ?? null,
     };
 
     setEditingUser(user);
@@ -114,6 +121,7 @@ const UserManagementPage = () => {
       <UserTable
         isLoading={isLoading}
         users={users}
+        buildings={buildings}
         openAddModal={openAddModal}
         openEditModal={openEditModal}
         handleDelete={handleDelete}
@@ -126,6 +134,7 @@ const UserManagementPage = () => {
           form={form}
           originalUser={originalUser}
           errors={errors}
+          buildings={buildings}
           setUsers={setUsers}
           setForm={setForm}
           setIsModalOpen={setIsModalOpen}

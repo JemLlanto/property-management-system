@@ -9,6 +9,7 @@ import {
   USER_TYPES,
   updateUser,
 } from "@/services/user.service";
+import { BuildingDataProps } from "@/services/building.service";
 import { X } from "lucide-react";
 import React, { Dispatch, SetStateAction } from "react";
 import Swal from "sweetalert2";
@@ -18,6 +19,7 @@ interface ModalProps {
   form: UserFormDataProps;
   originalUser: UserFormDataProps;
   errors: Partial<UserFormDataProps>;
+  buildings: BuildingDataProps[];
   setUsers: Dispatch<SetStateAction<UserDataProps[]>>;
   setForm: Dispatch<SetStateAction<UserFormDataProps>>;
   setIsModalOpen: Dispatch<SetStateAction<boolean>>;
@@ -29,6 +31,7 @@ const AddUserModal = ({
   editingUser,
   originalUser,
   errors,
+  buildings,
   setUsers,
   setForm,
   setIsModalOpen,
@@ -55,6 +58,11 @@ const AddUserModal = ({
       // Unit number doubles as the username/password when name and email are
       // blank, so it is mandatory either way.
       newErrors.unit_number = "Unit number is required";
+    }
+
+    // Unit Owners must be assigned to a building
+    if (form.type === "Unit Owner" && !form.building) {
+      newErrors.building = "Building is required for Unit Owner";
     }
 
     setErrors(newErrors);
@@ -205,6 +213,37 @@ const AddUserModal = ({
               <p className="text-xs text-red-500 mt-1">{errors.unit_number}</p>
             )}
           </div>
+
+          {/* Building — required for Unit Owner; shows current availability */}
+          {form.type === "Unit Owner" && (
+            <div>
+              <label className="block text-sm font-medium text-neutral-600 mb-1">
+                Building <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={form.building ?? ""}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    building: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
+                className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800 bg-white ${
+                  errors.building ? "border-red-400" : "border-neutral-300"
+                }`}
+              >
+                <option value="">Select a building</option>
+                {buildings.map((b) => (
+                  <option key={b.building_id} value={b.building_id}>
+                    {b.name} — {b.occupants}/{b.capacity} occupied
+                  </option>
+                ))}
+              </select>
+              {errors.building && (
+                <p className="text-xs text-red-500 mt-1">{errors.building}</p>
+              )}
+            </div>
+          )}
 
           {/* Unit Owner name — optional */}
           <div>

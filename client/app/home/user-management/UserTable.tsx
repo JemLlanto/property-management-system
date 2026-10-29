@@ -1,11 +1,13 @@
 "use client";
 
 import { UserDataProps } from "@/services/user.service";
+import { BuildingDataProps } from "@/services/building.service";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 interface TableProps {
   isLoading: boolean;
   users: UserDataProps[];
+  buildings: BuildingDataProps[];
   openAddModal: () => void;
   openEditModal: (user: UserDataProps) => void;
   handleDelete: (user: UserDataProps) => void;
@@ -14,6 +16,7 @@ interface TableProps {
 const UserTable = ({
   isLoading,
   users,
+  buildings,
   openAddModal,
   openEditModal,
   handleDelete,
@@ -83,6 +86,14 @@ const UserTable = ({
             </p>
             <p className="text-center text-neutral-600">
               {user.unit_number || "—"}
+              {user.building && (
+                <span className="block text-xs text-neutral-400">
+                  {
+                    buildings.find((b) => b.building_id === user.building)
+                      ?.name
+                  }
+                </span>
+              )}
             </p>
             <div className="flex justify-end gap-1 w-20">
               <button

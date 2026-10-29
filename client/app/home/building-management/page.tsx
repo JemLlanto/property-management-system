@@ -24,11 +24,9 @@ const BuildingManagementPage = () => {
 
   const [buildings, setBuildings] = useState<BuildingDataProps[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingBuilding, setEditingBuilding] = useState<BuildingDataProps | null>(
-    null,
-  );
-  const [form, setForm] =
-    useState<BuildingFormDataProps>(emptyBuildingForm);
+  const [editingBuilding, setEditingBuilding] =
+    useState<BuildingDataProps | null>(null);
+  const [form, setForm] = useState<BuildingFormDataProps>(emptyBuildingForm);
   const [errors, setErrors] = useState<Partial<BuildingFormDataProps>>({});
 
   // Checking user authorization and loading the building list

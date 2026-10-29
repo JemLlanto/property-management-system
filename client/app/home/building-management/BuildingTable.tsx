@@ -1,6 +1,9 @@
 "use client";
 
-import { BuildingDataProps, BuildingFormDataProps } from "@/services/building.service";
+import {
+  BuildingDataProps,
+  BuildingFormDataProps,
+} from "@/services/building.service";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 interface TableProps {
@@ -59,9 +62,7 @@ const BuildingTable = ({
             className="grid grid-cols-[2fr_1fr_auto] gap-2 items-center py-3 px-2 border-b border-neutral-100 hover:bg-neutral-50 transition-colors"
           >
             <p className="text-left text-neutral-800">{building.name}</p>
-            <p className="text-center text-neutral-600">
-              {building.capacity}
-            </p>
+            <p className="text-center text-neutral-600">{building.capacity}</p>
             <div className="flex justify-end gap-1 w-20">
               <button
                 onClick={() => openEditModal(building)}
