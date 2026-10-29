@@ -34,6 +34,17 @@ model Item {
   @@map("item")
 }
 
+model Building {
+  building_id Int      @id @default(autoincrement()) @map("building_id")
+  name        String   @db.VarChar(100)
+  capacity    Int
+  created_at  DateTime? @default(now()) @map("created_at")
+  updated_at  DateTime? @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([name])
+  @@map("building")
+}
+
 model Stock {
   id    Int    @id @default(autoincrement())
   name  String @db.VarChar(100)
