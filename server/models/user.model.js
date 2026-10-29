@@ -199,7 +199,10 @@ async function createUserByAdmin({ email, type, name, unit_number, building }) {
   return { user: toPublicUser(parseUser(user)), tempPassword };
 }
 
-async function updateUser(user_id, { email, type, name, unit_number, building }) {
+async function updateUser(
+  user_id,
+  { email, type, name, unit_number, building },
+) {
   const data = {};
 
   if (email !== undefined) data.email = email;
