@@ -102,8 +102,52 @@ async function getAllUsers() {
   return users.map(toPublicUser);
 }
 
-// Admin-facing create: generates a temporary password and returns it once
+// Admin-facing create: generates a temporary password and returns it once.
+// Email is optional — when name AND email are blank, the unit number becomes
+// both the username (stored in email) and the password.
 async function createUserByAdmin({ email, type, name, unit_number }) {
+  const hasEmail = Boolean(email && String(email).trim());
+  const hasName = Boolean(name && String(name).trim());
+
+  // Blank name + blank email → unit number is the username and the password
+  if (!hasEmail && !hasName) {
+    if (!unit_number || !String(unit_number).trim()) {
+      throw new Error(
+        "Unit number is required when email and name are blank",
+      );
+    }
+
+    const username = String(unit_number).trim();
+    const existing = await findByEmail(username);
+
+    if (existing) {
+      throw new Error(`A user with unit number "${username}" already exists`);
+    }
+
+    const user = await prisma.user.create({
+      data: {
+        user_id: customAlphabet(
+          "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+          12,
+        )(),
+        email: username, // unit number doubles as the login identifier
+        password: await bcrypt.hash(username, 10), // password = unit number
+        type,
+        name: null,
+        unit_number: type === "Unit Owner" ? username : null,
+        refresh_tokens: [],
+      },
+    });
+
+    // The password is the unit number itself, so nothing else to hand over
+    return { user: toPublicUser(parseUser(user)), tempPassword: username };
+  }
+
+  // Email provided (or name provided with blank email) — original flow
+  if (!hasEmail) {
+    throw new Error("Email is required when a name is provided");
+  }
+
   const existing = await findByEmail(email);
 
   if (existing) {
@@ -119,12 +163,11 @@ async function createUserByAdmin({ email, type, name, unit_number }) {
         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
         12,
       )(),
-      email,
+      email: String(email).trim().toLowerCase(),
       password: await bcrypt.hash(tempPassword, 10),
       type,
       name: name || null,
-      unit_number:
-        type === "Unit Owner" ? unit_number || null : null,
+      unit_number: type === "Unit Owner" ? unit_number || null : null,
       refresh_tokens: [],
     },
   });

@@ -13,8 +13,10 @@ async function getUsers(req, res) {
 }
 
 // Create a user from the user-management page.
+// - email: optional. When name AND email are blank, the unit number becomes
+//   the username and the password.
 // - type: "Unit Owner" (default) | "Admin" | "Super Admin"
-// - unit_number: required only when type is "Unit Owner"
+// - unit_number: required for Unit Owner
 // - name: optional
 // A temporary password is generated server-side and returned once so the
 // admin can hand it to the new user.
@@ -22,10 +24,16 @@ async function createUser(req, res) {
   try {
     const { email, type, name, unit_number } = req.body;
 
-    if (!email || !String(email).trim()) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Email is required" });
+    const hasEmail = Boolean(email && String(email).trim());
+    const hasName = Boolean(name && String(name).trim());
+
+    // Name without email is not allowed (the account would be uninvitable),
+    // but both blank is fine — the unit number takes over as the username.
+    if (hasName && !hasEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required when a name is provided",
+      });
     }
 
     const userType = type || "Unit Owner";
@@ -44,7 +52,7 @@ async function createUser(req, res) {
     }
 
     const { user, tempPassword } = await User.createUserByAdmin({
-      email: String(email).trim().toLowerCase(),
+      email: hasEmail ? String(email).trim().toLowerCase() : undefined,
       type: userType,
       name,
       unit_number,
