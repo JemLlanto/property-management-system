@@ -102,8 +102,7 @@ const AddUserModal = ({
         if (response.success) {
           setUsers((prev) => [response.user, ...prev]);
 
-          const usedUnitNumberLogin =
-            !form.email.trim() && !form.name.trim();
+          const usedUnitNumberLogin = !form.email.trim() && !form.name.trim();
 
           // Show the credentials once so the admin can share them
           Swal.fire({
@@ -149,8 +148,7 @@ const AddUserModal = ({
           {/* Email */}
           <div>
             <label className="block text-sm font-medium text-neutral-600 mb-1">
-              Email{" "}
-              <span className="text-neutral-400 text-xs">(optional)</span>
+              Email <span className="text-neutral-400 text-xs">(optional)</span>
             </label>
             <input
               type="email"
