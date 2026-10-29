@@ -8,6 +8,8 @@ const DEFAULT_TIMEOUT_MS = 15000;
 export interface AuthProps {
   username?: string;
   email: string;
+  // Login identifier — may be an email, unit number, or display name
+  identifier?: string;
   password: string;
 }
 
@@ -17,13 +19,21 @@ interface ServerUser {
   id?: string;
   username?: string;
   email: string;
+  type?: string;
+  name?: string | null;
+  unit_number?: string | null;
+  building?: number | null;
 }
 
 // Normalizes the server user payload into the shape the Redux store expects
 const normalizeUser = (user: ServerUser) => ({
   id: user.user_id ?? user.id ?? "",
-  username: user.username ?? "",
+  username: user.username ?? user.name ?? "",
   email: user.email ?? "",
+  type: user.type ?? "",
+  name: user.name ?? "",
+  unit_number: user.unit_number ?? "",
+  building: user.building ?? null,
 });
 
 // credentials: 'include' is CRITICAL — it tells fetch to send/receive cookies
@@ -98,14 +108,18 @@ export const login = async (
   formData: AuthProps,
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
 ) => {
-  const { email, password } = formData;
+  const { email, identifier, password } = formData;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(
       `${BASE}/auth/login`,
-      options("POST", { email, password }, controller.signal),
+      options(
+        "POST",
+        { identifier: identifier ?? email, password },
+        controller.signal,
+      ),
     );
 
     const data = await response.json();

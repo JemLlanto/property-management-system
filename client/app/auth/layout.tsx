@@ -3,6 +3,8 @@ import { ReactNode } from "react";
 interface Props {
   children: ReactNode;
 }
+
+// Titles are managed by app/PageTitle.tsx — no static title here.
 const AuthLayout = ({ children }: Props) => {
   return (
     <div className="h-dvh w-dvw bg-(--primary) flex justify-center items-center p-4">

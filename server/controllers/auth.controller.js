@@ -59,28 +59,41 @@ async function register(req, res) {
     User.addRefreshToken(user, refreshToken);
 
     setAuthCookies(res, accessToken, refreshToken);
-    return res
-      .status(201)
-      .json({ success: true, user: { id: user.user_id, email: user.email } });
+    return res.status(201).json({
+      success: true,
+      user: {
+        id: user.user_id,
+        email: user.email,
+        type: user.type,
+        name: user.name,
+        unit_number: user.unit_number,
+        building: user.building ?? null,
+      },
+    });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
   }
 }
 
 async function login(req, res) {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Email and password are required" });
+  const { email, identifier, password } = req.body;
+  // The client may send the identifier as "email" (legacy) or "identifier"
+  const loginIdentifier = (identifier || email || "").trim();
+
+  if (!loginIdentifier || !password) {
+    return res.status(400).json({
+      success: false,
+      message: "Email/username and password are required",
+    });
   }
 
-  const user = await User.findByEmail(email);
+  // Matches on email, unit number, or display name
+  const user = await User.findByIdentifier(loginIdentifier);
   if (!user) {
     return res
       .status(401)
       .json({ success: false, message: "Invalid credentials" });
-    console.log("User not found for email:", email);
+    console.log("User not found for identifier:", loginIdentifier);
   }
 
   const valid = await User.validatePassword(password, user.password);
@@ -97,7 +110,14 @@ async function login(req, res) {
   setAuthCookies(res, accessToken, refreshToken);
   return res.json({
     success: true,
-    user: { user_id: user.user_id, email: user.email },
+    user: {
+      user_id: user.user_id,
+      email: user.email,
+      type: user.type,
+      name: user.name,
+      unit_number: user.unit_number,
+      building: user.building ?? null,
+    },
   });
 }
 
@@ -152,7 +172,14 @@ async function me(req, res) {
   if (!user) return res.status(404).json({ message: "User not found" });
   return res.json({
     success: true,
-    user: { user_id: user.user_id, email: user.email },
+    user: {
+      user_id: user.user_id,
+      email: user.email,
+      type: user.type,
+      name: user.name,
+      unit_number: user.unit_number,
+      building: user.building ?? null,
+    },
   });
 }
 

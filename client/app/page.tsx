@@ -1,6 +1,4 @@
 "use client";
-import NavBar from "@/app/NavBar";
-import Hero from "@/app/Hero";
 import { useEffect, useRef, useState } from "react";
 import { web_data } from "@/utils/data.helper";
 import { scrollToSection } from "@/utils/page.helper";
