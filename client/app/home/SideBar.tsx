@@ -18,6 +18,7 @@ const SideBar = () => {
     { name: "User Management", href: "/home/user-management" },
     { name: "Building Management", href: "/home/building-management" },
     { name: "Bills Management", href: "/home/bills-management" },
+    { name: "Payments", href: "/home/payments" },
   ];
 
   const handleLogout = async () => {

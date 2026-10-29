@@ -19,6 +19,9 @@ model User {
   created_at    DateTime? @default(now()) @map("created_at")
   updated_at    DateTime? @updatedAt @map("updated_at")
 
+  payments_made   Payment[] @relation("PaidBy")
+  payments_recorded Payment[] @relation("RecordedBy")
+
   @@index([building])
   @@map("users")
 }
@@ -56,7 +59,29 @@ model Bill {
   created_at DateTime? @default(now()) @map("created_at")
   updated_at DateTime? @default(now()) @updatedAt @map("updated_at")
 
+  payments Payment[]
+
   @@map("bill")
+}
+
+model Payment {
+  payment_id    Int       @id @default(autoincrement()) @map("payment_id")
+  bill_id       Int       @map("bill_id")
+  paid_by_id    String    @map("paid_by_id") @db.VarChar(12)
+  recorded_by_id String   @map("recorded_by_id") @db.VarChar(12)
+  amount        Decimal   @db.Decimal(10, 2)
+  paid_at       DateTime  @default(now()) @map("paid_at")
+  created_at    DateTime? @default(now()) @map("created_at")
+  updated_at    DateTime? @default(now()) @updatedAt @map("updated_at")
+
+  bill       Bill @relation(fields: [bill_id], references: [bill_id])
+  paidBy     User @relation("PaidBy", fields: [paid_by_id], references: [user_id])
+  recordedBy User @relation("RecordedBy", fields: [recorded_by_id], references: [user_id])
+
+  @@index([bill_id])
+  @@index([paid_by_id])
+  @@index([recorded_by_id])
+  @@map("payment")
 }
 
 model Stock {
