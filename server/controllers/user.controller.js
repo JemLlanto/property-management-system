@@ -1,4 +1,20 @@
 const User = require("../models/user.model");
+const Building = require("../models/building.model");
+
+// Normalises the building reference coming from the client
+function parseBuilding(value) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const buildingId = Number(value);
+
+  if (!Number.isInteger(buildingId) || buildingId <= 0) {
+    throw new Error("Invalid building");
+  }
+
+  return buildingId;
+}
 
 // List all users (any authenticated user can view; tighten with role checks
 // later if needed)
@@ -22,7 +38,7 @@ async function getUsers(req, res) {
 // admin can hand it to the new user.
 async function createUser(req, res) {
   try {
-    const { email, type, name, unit_number } = req.body;
+    const { email, type, name, unit_number, building } = req.body;
 
     const hasEmail = Boolean(email && String(email).trim());
     const hasName = Boolean(name && String(name).trim());
@@ -51,12 +67,43 @@ async function createUser(req, res) {
       });
     }
 
+    // Unit Owners must be assigned to a building
+    let buildingId = null;
+
+    try {
+      buildingId = parseBuilding(building);
+    } catch (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+
+    if (userType === "Unit Owner" && !buildingId) {
+      return res.status(400).json({
+        success: false,
+        message: "Building is required for Unit Owner accounts",
+      });
+    }
+
+    // Make sure the building exists and still has room
+    if (buildingId) {
+      try {
+        await Building.findOccupiable(buildingId);
+      } catch (err) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
+    }
+
     const { user, tempPassword } = await User.createUserByAdmin({
       email: hasEmail ? String(email).trim().toLowerCase() : undefined,
       type: userType,
       name,
       unit_number,
+      building: buildingId,
     });
+
+    // Count the new occupant against the building
+    if (buildingId) {
+      await Building.adjustOccupants(buildingId, 1);
+    }
 
     return res.status(201).json({
       success: true,
@@ -73,7 +120,7 @@ async function createUser(req, res) {
 async function updateUser(req, res) {
   try {
     const { user_id } = req.params;
-    const { email, type, name, unit_number } = req.body;
+    const { email, type, name, unit_number, building } = req.body;
 
     if (type !== undefined && !User.USER_TYPES.includes(type)) {
       return res
@@ -91,13 +138,52 @@ async function updateUser(req, res) {
       });
     }
 
+    const existing = await User.findById(user_id);
+
+    if (!existing) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    let buildingId;
+
+    try {
+      buildingId = parseBuilding(building);
+    } catch (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+
+    // Validate the target building before switching occupants over
+    if (buildingId && buildingId !== existing.building) {
+      try {
+        await Building.findOccupiable(buildingId);
+      } catch (err) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
+    }
+
     const user = await User.updateUser(user_id, {
       email:
         email !== undefined ? String(email).trim().toLowerCase() : undefined,
       type,
       name,
       unit_number,
+      building: building !== undefined ? buildingId : undefined,
     });
+
+    // Keep the occupant counts in sync when the building changes
+    const previousBuilding = existing.building ?? null;
+    const nextBuilding = building !== undefined ? buildingId : previousBuilding;
+
+    if (previousBuilding !== nextBuilding) {
+      if (previousBuilding) {
+        await Building.adjustOccupants(previousBuilding, -1);
+      }
+      if (nextBuilding) {
+        await Building.adjustOccupants(nextBuilding, 1);
+      }
+    }
 
     return res.json({
       success: true,
@@ -116,12 +202,19 @@ async function deleteUser(req, res) {
   try {
     const { user_id } = req.params;
 
+    const existing = await User.findById(user_id);
+
     const deleted = await User.deleteUser(user_id, req.user.user_id);
 
     if (deleted === null) {
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
+    }
+
+    // Free up the building slot
+    if (existing && existing.building) {
+      await Building.adjustOccupants(existing.building, -1);
     }
 
     return res.json({ success: true, message: "User deleted successfully" });

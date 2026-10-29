@@ -129,7 +129,7 @@ async function getAllUsers() {
 // Admin-facing create: generates a temporary password and returns it once.
 // Email is optional — when name AND email are blank, the unit number becomes
 // both the username (stored in email) and the password.
-async function createUserByAdmin({ email, type, name, unit_number }) {
+async function createUserByAdmin({ email, type, name, unit_number, building }) {
   const hasEmail = Boolean(email && String(email).trim());
   const hasName = Boolean(name && String(name).trim());
 
@@ -157,6 +157,7 @@ async function createUserByAdmin({ email, type, name, unit_number }) {
         type,
         name: null,
         unit_number: type === "Unit Owner" ? username : null,
+        building: building ?? null,
         refresh_tokens: [],
       },
     });
@@ -190,6 +191,7 @@ async function createUserByAdmin({ email, type, name, unit_number }) {
       type,
       name: name || null,
       unit_number: type === "Unit Owner" ? unit_number || null : null,
+      building: building ?? null,
       refresh_tokens: [],
     },
   });
@@ -197,7 +199,7 @@ async function createUserByAdmin({ email, type, name, unit_number }) {
   return { user: toPublicUser(parseUser(user)), tempPassword };
 }
 
-async function updateUser(user_id, { email, type, name, unit_number }) {
+async function updateUser(user_id, { email, type, name, unit_number, building }) {
   const data = {};
 
   if (email !== undefined) data.email = email;
@@ -209,6 +211,7 @@ async function updateUser(user_id, { email, type, name, unit_number }) {
   }
   if (name !== undefined) data.name = name;
   if (unit_number !== undefined) data.unit_number = unit_number;
+  if (building !== undefined) data.building = building;
 
   const user = await prisma.user.update({
     where: { user_id },

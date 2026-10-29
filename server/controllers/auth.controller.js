@@ -67,6 +67,7 @@ async function register(req, res) {
         type: user.type,
         name: user.name,
         unit_number: user.unit_number,
+        building: user.building ?? null,
       },
     });
   } catch (err) {
@@ -115,6 +116,7 @@ async function login(req, res) {
       type: user.type,
       name: user.name,
       unit_number: user.unit_number,
+      building: user.building ?? null,
     },
   });
 }
@@ -176,6 +178,7 @@ async function me(req, res) {
       type: user.type,
       name: user.name,
       unit_number: user.unit_number,
+      building: user.building ?? null,
     },
   });
 }
