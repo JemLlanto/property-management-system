@@ -36,9 +36,12 @@ const BuildingTable = ({
       </div>
 
       {/* Table header */}
-      <div className="grid grid-cols-[2fr_1fr_auto] gap-2 border-b border-neutral-300 pb-2 px-2">
+      <div className="grid grid-cols-[2fr_1fr_1fr_auto] gap-2 border-b border-neutral-300 pb-2 px-2">
         <h5 className="text-left font-semibold text-sm text-neutral-500 uppercase tracking-wide">
           Building Name
+        </h5>
+        <h5 className="text-center font-semibold text-sm text-neutral-500 uppercase tracking-wide">
+          Occupants
         </h5>
         <h5 className="text-center font-semibold text-sm text-neutral-500 uppercase tracking-wide">
           Capacity
@@ -59,9 +62,10 @@ const BuildingTable = ({
         buildings.map((building) => (
           <div
             key={building.building_id}
-            className="grid grid-cols-[2fr_1fr_auto] gap-2 items-center py-3 px-2 border-b border-neutral-100 hover:bg-neutral-50 transition-colors"
+            className="grid grid-cols-[2fr_1fr_1fr_auto] gap-2 items-center py-3 px-2 border-b border-neutral-100 hover:bg-neutral-50 transition-colors"
           >
             <p className="text-left text-neutral-800">{building.name}</p>
+            <p className="text-center text-neutral-600">{building.occupants}</p>
             <p className="text-center text-neutral-600">{building.capacity}</p>
             <div className="flex justify-end gap-1 w-20">
               <button

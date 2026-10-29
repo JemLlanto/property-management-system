@@ -9,7 +9,7 @@ import {
   USER_TYPES,
   updateUser,
 } from "@/services/user.service";
-import { BuildingDataProps } from "@/services/building.service";
+import { BuildingDataProps, getBuildings } from "@/services/building.service";
 import { X } from "lucide-react";
 import React, { Dispatch, SetStateAction } from "react";
 import Swal from "sweetalert2";
@@ -21,6 +21,7 @@ interface ModalProps {
   errors: Partial<UserFormDataProps>;
   buildings: BuildingDataProps[];
   setUsers: Dispatch<SetStateAction<UserDataProps[]>>;
+  setBuildings: Dispatch<SetStateAction<BuildingDataProps[]>>;
   setForm: Dispatch<SetStateAction<UserFormDataProps>>;
   setIsModalOpen: Dispatch<SetStateAction<boolean>>;
   setErrors: Dispatch<SetStateAction<Partial<UserFormDataProps>>>;
@@ -33,6 +34,7 @@ const AddUserModal = ({
   errors,
   buildings,
   setUsers,
+  setBuildings,
   setForm,
   setIsModalOpen,
   setErrors,
@@ -69,6 +71,16 @@ const AddUserModal = ({
     return Object.keys(newErrors).length === 0;
   };
 
+  // Refresh buildings so the occupant counts reflect the change
+  const refreshBuildings = async () => {
+    try {
+      const buildingRes = await getBuildings();
+      setBuildings(buildingRes.buildings ?? []);
+    } catch (err) {
+      console.error("Error refreshing buildings: ", err);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validate()) return;
 
@@ -92,6 +104,9 @@ const AddUserModal = ({
             prev.map((u) => (u.user_id === updated.user_id ? updated : u)),
           );
 
+          // The occupant counts may have moved between buildings
+          refreshBuildings();
+
           Swal.fire({
             icon: "success",
             title: "User updated",
@@ -109,6 +124,9 @@ const AddUserModal = ({
 
         if (response.success) {
           setUsers((prev) => [response.user, ...prev]);
+
+          // A new occupant was counted against the building
+          refreshBuildings();
 
           const usedUnitNumberLogin = !form.email.trim() && !form.name.trim();
 

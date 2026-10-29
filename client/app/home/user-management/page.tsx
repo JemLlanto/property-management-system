@@ -86,6 +86,16 @@ const UserManagementPage = () => {
     setIsModalOpen(true);
   };
 
+  // Refresh buildings so the occupant counts stay accurate
+  const refreshBuildings = async () => {
+    try {
+      const buildingRes = await getBuildings();
+      setBuildings(buildingRes.buildings ?? []);
+    } catch (err) {
+      console.error("Error refreshing buildings: ", err);
+    }
+  };
+
   const handleDelete = async (user: UserDataProps) => {
     const result = await Swal.fire({
       icon: "warning",
@@ -104,6 +114,8 @@ const UserManagementPage = () => {
 
       if (response.success) {
         setUsers((prev) => prev.filter((u) => u.user_id !== user.user_id));
+        // The deleted user's building slot is freed
+        refreshBuildings();
         Swal.fire({
           icon: "success",
           title: "User deleted",
@@ -136,6 +148,7 @@ const UserManagementPage = () => {
           errors={errors}
           buildings={buildings}
           setUsers={setUsers}
+          setBuildings={setBuildings}
           setForm={setForm}
           setIsModalOpen={setIsModalOpen}
           setErrors={setErrors}

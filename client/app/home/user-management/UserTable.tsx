@@ -36,7 +36,7 @@ const UserTable = ({
       </div>
 
       {/* Table header */}
-      <div className="grid grid-cols-[2fr_1fr_2fr_1fr_auto] gap-2 border-b border-neutral-300 pb-2 px-2">
+      <div className="grid grid-cols-[2fr_1fr_2fr_2fr_1fr_auto] gap-2 border-b border-neutral-300 pb-2 px-2">
         <h5 className="text-left font-semibold text-sm text-neutral-500 uppercase tracking-wide">
           Email
         </h5>
@@ -45,6 +45,9 @@ const UserTable = ({
         </h5>
         <h5 className="text-left font-semibold text-sm text-neutral-500 uppercase tracking-wide">
           Unit Owner
+        </h5>
+        <h5 className="text-left font-semibold text-sm text-neutral-500 uppercase tracking-wide">
+          Building
         </h5>
         <h5 className="text-center font-semibold text-sm text-neutral-500 uppercase tracking-wide">
           Unit No.
@@ -65,7 +68,7 @@ const UserTable = ({
         users.map((user) => (
           <div
             key={user.user_id}
-            className="grid grid-cols-[2fr_1fr_2fr_1fr_auto] gap-2 items-center py-3 px-2 border-b border-neutral-100 hover:bg-neutral-50 transition-colors"
+            className="grid grid-cols-[2fr_1fr_2fr_2fr_1fr_auto] gap-2 items-center py-3 px-2 border-b border-neutral-100 hover:bg-neutral-50 transition-colors"
           >
             <p className="text-left text-neutral-800 truncate">{user.email}</p>
             <p className="text-left">
@@ -84,16 +87,16 @@ const UserTable = ({
             <p className="text-left text-neutral-800">
               {user.name || <span className="text-neutral-400">—</span>}
             </p>
+            <p className="text-left text-neutral-800">
+              {user.building ? (
+                (buildings.find((b) => b.building_id === user.building)?.name ??
+                  "—")
+              ) : (
+                <span className="text-neutral-400">—</span>
+              )}
+            </p>
             <p className="text-center text-neutral-600">
               {user.unit_number || "—"}
-              {user.building && (
-                <span className="block text-xs text-neutral-400">
-                  {
-                    buildings.find((b) => b.building_id === user.building)
-                      ?.name
-                  }
-                </span>
-              )}
             </p>
             <div className="flex justify-end gap-1 w-20">
               <button
