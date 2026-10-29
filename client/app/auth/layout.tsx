@@ -1,14 +1,10 @@
 import { ReactNode } from "react";
-import type { Metadata } from "next";
 
 interface Props {
   children: ReactNode;
 }
 
-export const metadata: Metadata = {
-  title: "Sign In",
-};
-
+// Titles are managed by app/PageTitle.tsx — no static title here.
 const AuthLayout = ({ children }: Props) => {
   return (
     <div className="h-dvh w-dvw bg-(--primary) flex justify-center items-center p-4">

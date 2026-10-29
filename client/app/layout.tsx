@@ -12,6 +12,8 @@ const mainFont = Elms_Sans({
   adjustFontFallback: false,
 });
 
+// The `template` appends " | Property Management System" to every route
+// title. Each route segment declares its own short title.
 export const metadata: Metadata = {
   title: {
     default: "Property Management System",
