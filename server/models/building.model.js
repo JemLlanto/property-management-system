@@ -64,6 +64,33 @@ async function updateBuilding(building_id, { name, capacity }) {
   });
 }
 
+// Find a building and validate it can accept another occupant
+async function findOccupiable(building_id) {
+  const building = await prisma.building.findUnique({
+    where: { building_id: Number(building_id) },
+  });
+
+  if (!building) {
+    throw new Error("Selected building does not exist");
+  }
+
+  if (building.occupants >= building.capacity) {
+    throw new Error(
+      `"${building.name}" is at full capacity (${building.capacity})`,
+    );
+  }
+
+  return building;
+}
+
+// Atomically bump the occupant count up (+1) or down (-1)
+async function adjustOccupants(building_id, delta) {
+  return prisma.building.update({
+    where: { building_id: Number(building_id) },
+    data: { occupants: { increment: delta } },
+  });
+}
+
 async function deleteBuilding(building_id) {
   const building = await prisma.building.findUnique({
     where: { building_id: Number(building_id) },
@@ -83,6 +110,8 @@ async function deleteBuilding(building_id) {
 module.exports = {
   getAllBuildings,
   findByName,
+  findOccupiable,
+  adjustOccupants,
   createBuilding,
   updateBuilding,
   deleteBuilding,
