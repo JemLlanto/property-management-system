@@ -6,11 +6,7 @@ import { options } from "./auth.service";
 const BASE = process.env.NEXT_PUBLIC_API_URL;
 const DEFAULT_TIMEOUT_MS = 15000;
 
-export const USER_TYPES = [
-  "Unit Owner",
-  "Admin",
-  "Super Admin",
-] as const;
+export const USER_TYPES = ["Unit Owner", "Admin", "Super Admin"] as const;
 
 export type UserType = (typeof USER_TYPES)[number];
 
@@ -25,6 +21,8 @@ export interface UserDataProps {
 }
 
 export interface UserFormDataProps {
+  // Optional — when blank and the name is also blank, the unit number is
+  // used as both the username and the password.
   email: string;
   type: UserType;
   name: string;
@@ -43,9 +41,7 @@ export const requiresUnitNumber = (type: UserType): boolean =>
   type === "Unit Owner";
 
 // List every user in the system
-export const getUsers = async (
-  timeoutMs: number = DEFAULT_TIMEOUT_MS,
-) => {
+export const getUsers = async (timeoutMs: number = DEFAULT_TIMEOUT_MS) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 

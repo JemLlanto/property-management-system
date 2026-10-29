@@ -3,7 +3,6 @@
 import {
   createUser,
   emptyUserForm,
-  requiresUnitNumber,
   UserDataProps,
   UserFormDataProps,
   UserType,
@@ -44,14 +43,18 @@ const AddUserModal = ({
   const validate = (): boolean => {
     const newErrors: Partial<UserFormDataProps> = {};
 
-    if (!form.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+    // Email is optional — but must be well-formed when provided
+    if (
+      form.email.trim() &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
+    ) {
       newErrors.email = "Please enter a valid email address";
     }
 
-    if (requiresUnitNumber(form.type) && !form.unit_number.trim()) {
-      newErrors.unit_number = "Unit number is required for Unit Owner";
+    if (!form.unit_number.trim()) {
+      // Unit number doubles as the username/password when name and email are
+      // blank, so it is mandatory either way.
+      newErrors.unit_number = "Unit number is required";
     }
 
     setErrors(newErrors);
@@ -99,14 +102,23 @@ const AddUserModal = ({
         if (response.success) {
           setUsers((prev) => [response.user, ...prev]);
 
-          // Show the temporary password once so the admin can share it
+          const usedUnitNumberLogin =
+            !form.email.trim() && !form.name.trim();
+
+          // Show the credentials once so the admin can share them
           Swal.fire({
             icon: "success",
             title: "User created",
-            html: `
-              <p style="margin-bottom:8px">Share this temporary password with the user:</p>
-              <code style="font-size:1.1em;font-weight:bold;user-select:all">${response.tempPassword}</code>
-            `,
+            html: usedUnitNumberLogin
+              ? `
+                <p style="margin-bottom:8px">No email/name given — the unit number is the login:</p>
+                <p style="margin-bottom:4px">Username: <code style="font-weight:bold;user-select:all">${response.user.unit_number ?? response.user.email}</code></p>
+                <p>Password: <code style="font-weight:bold;user-select:all">${response.tempPassword}</code></p>
+              `
+              : `
+                <p style="margin-bottom:8px">Share this temporary password with the user:</p>
+                <code style="font-size:1.1em;font-weight:bold;user-select:all">${response.tempPassword}</code>
+              `,
             confirmButtonText: "Done",
           });
         }
@@ -117,8 +129,6 @@ const AddUserModal = ({
 
     closeModal();
   };
-
-  const unitNumberRequired = requiresUnitNumber(form.type);
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
@@ -139,7 +149,8 @@ const AddUserModal = ({
           {/* Email */}
           <div>
             <label className="block text-sm font-medium text-neutral-600 mb-1">
-              Email <span className="text-red-500">*</span>
+              Email{" "}
+              <span className="text-neutral-400 text-xs">(optional)</span>
             </label>
             <input
               type="email"
@@ -175,15 +186,11 @@ const AddUserModal = ({
             </select>
           </div>
 
-          {/* Unit Number — required only when type is Unit Owner */}
+          {/* Unit Number — always required; doubles as username + password
+              when name and email are blank */}
           <div>
             <label className="block text-sm font-medium text-neutral-600 mb-1">
-              Unit Number{" "}
-              {unitNumberRequired ? (
-                <span className="text-red-500">*</span>
-              ) : (
-                <span className="text-neutral-400 text-xs">(optional)</span>
-              )}
+              Unit Number <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
