@@ -116,4 +116,9 @@ async function deleteBuilding(req, res) {
   }
 }
 
-module.exports = { getBuildings, createBuilding, updateBuilding, deleteBuilding };
+module.exports = {
+  getBuildings,
+  createBuilding,
+  updateBuilding,
+  deleteBuilding,
+};
