@@ -90,7 +90,7 @@ const UserTable = ({
             <p className="text-left text-neutral-800">
               {user.building ? (
                 (buildings.find((b) => b.building_id === user.building)?.name ??
-                  "—")
+                "—")
               ) : (
                 <span className="text-neutral-400">—</span>
               )}
