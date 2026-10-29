@@ -11,6 +11,7 @@ interface TableProps {
   openAddModal: () => void;
   openEditModal: (user: UserDataProps) => void;
   handleDelete: (user: UserDataProps) => void;
+  openDetailsModal: (user: UserDataProps) => void;
 }
 
 const UserTable = ({
@@ -20,6 +21,7 @@ const UserTable = ({
   openAddModal,
   openEditModal,
   handleDelete,
+  openDetailsModal,
 }: TableProps) => {
   return (
     <div className="w-full mx-auto p-5 bg-white border border-gray-200 rounded-xl shadow-sm font-sans">
@@ -68,7 +70,16 @@ const UserTable = ({
         users.map((user) => (
           <div
             key={user.user_id}
-            className="grid grid-cols-[2fr_1fr_2fr_2fr_1fr_auto] gap-2 items-center py-3 px-2 border-b border-neutral-100 hover:bg-neutral-50 transition-colors"
+            role="button"
+            tabIndex={0}
+            onClick={() => openDetailsModal(user)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openDetailsModal(user);
+              }
+            }}
+            className="grid grid-cols-[2fr_1fr_2fr_2fr_1fr_auto] gap-2 items-center py-3 px-2 border-b border-neutral-100 hover:bg-neutral-50 transition-colors cursor-pointer focus:outline-none focus-visible:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-400"
           >
             <p className="text-left text-neutral-800 truncate">{user.email}</p>
             <p className="text-left">
@@ -98,7 +109,10 @@ const UserTable = ({
             <p className="text-center text-neutral-600">
               {user.unit_number || "—"}
             </p>
-            <div className="flex justify-end gap-1 w-20">
+            <div
+              className="flex justify-end gap-1 w-20"
+              onClick={(e) => e.stopPropagation()}
+            >
               <button
                 onClick={() => openEditModal(user)}
                 className="p-1.5 rounded-md text-neutral-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"

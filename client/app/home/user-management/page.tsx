@@ -16,6 +16,7 @@ import {
 } from "@/services/user.service";
 import { BuildingDataProps, getBuildings } from "@/services/building.service";
 import AddUserModal from "./AddUserModal";
+import UserDetailsModal from "./UserDetailsModal";
 import UserTable from "./UserTable";
 
 const UserManagementPage = () => {
@@ -28,6 +29,7 @@ const UserManagementPage = () => {
   const [buildings, setBuildings] = useState<BuildingDataProps[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserDataProps | null>(null);
+  const [viewingUser, setViewingUser] = useState<UserDataProps | null>(null);
   const [form, setForm] = useState<UserFormDataProps>(emptyUserForm);
   const [originalUser, setOriginalUser] =
     useState<UserFormDataProps>(emptyUserForm);
@@ -68,6 +70,11 @@ const UserManagementPage = () => {
     setOriginalUser(emptyUserForm);
     setErrors({});
     setIsModalOpen(true);
+  };
+
+  // Open the read-only details modal for a user row
+  const openDetailsModal = (user: UserDataProps) => {
+    setViewingUser(user);
   };
 
   const openEditModal = (user: UserDataProps) => {
@@ -137,7 +144,18 @@ const UserManagementPage = () => {
         openAddModal={openAddModal}
         openEditModal={openEditModal}
         handleDelete={handleDelete}
+        openDetailsModal={openDetailsModal}
       />
+
+      {/* Details Modal */}
+      {viewingUser && (
+        <UserDetailsModal
+          user={viewingUser}
+          buildings={buildings}
+          onClose={() => setViewingUser(null)}
+          onEdit={openEditModal}
+        />
+      )}
 
       {/* Add/Edit Modal */}
       {isModalOpen && (
