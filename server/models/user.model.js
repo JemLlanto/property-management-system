@@ -61,6 +61,30 @@ async function findById(user_id) {
   return parseUser(user);
 }
 
+// Find a user by email, unit number, or display name. The login form
+// accepts any of the three as the identifier.
+async function findByIdentifier(identifier) {
+  const value = String(identifier || "").trim();
+
+  if (!value) {
+    return null;
+  }
+
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [{ email: value }, { unit_number: value }, { name: value }],
+    },
+    // Names are not unique, so prefer the most recently created match
+    orderBy: { created_at: "desc" },
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  return parseUser(user);
+}
+
 async function validatePassword(password, hashedPassword) {
   return bcrypt.compare(password, hashedPassword);
 }
@@ -112,9 +136,7 @@ async function createUserByAdmin({ email, type, name, unit_number }) {
   // Blank name + blank email → unit number is the username and the password
   if (!hasEmail && !hasName) {
     if (!unit_number || !String(unit_number).trim()) {
-      throw new Error(
-        "Unit number is required when email and name are blank",
-      );
+      throw new Error("Unit number is required when email and name are blank");
     }
 
     const username = String(unit_number).trim();
@@ -238,6 +260,7 @@ module.exports = {
   deleteUser,
   findByEmail,
   findById,
+  findByIdentifier,
   validatePassword,
   addRefreshToken,
   removeRefreshToken,

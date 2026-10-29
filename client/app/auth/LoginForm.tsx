@@ -73,12 +73,13 @@ const LoginForm = () => {
       >
         <div>
           <label htmlFor="email" className="block text-sm font-medium mb-2">
-            Email Address
+            Email or Username
           </label>
           <input
             id="email"
             type="text"
-            placeholder="Enter your email"
+            autoComplete="username"
+            placeholder="Email, unit number, or name"
             value={formData.email}
             onChange={(e) => handleChange("email", e.target.value)}
             className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-300"

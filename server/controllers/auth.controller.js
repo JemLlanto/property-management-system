@@ -75,19 +75,24 @@ async function register(req, res) {
 }
 
 async function login(req, res) {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Email and password are required" });
+  const { email, identifier, password } = req.body;
+  // The client may send the identifier as "email" (legacy) or "identifier"
+  const loginIdentifier = (identifier || email || "").trim();
+
+  if (!loginIdentifier || !password) {
+    return res.status(400).json({
+      success: false,
+      message: "Email/username and password are required",
+    });
   }
 
-  const user = await User.findByEmail(email);
+  // Matches on email, unit number, or display name
+  const user = await User.findByIdentifier(loginIdentifier);
   if (!user) {
     return res
       .status(401)
       .json({ success: false, message: "Invalid credentials" });
-    console.log("User not found for email:", email);
+    console.log("User not found for identifier:", loginIdentifier);
   }
 
   const valid = await User.validatePassword(password, user.password);

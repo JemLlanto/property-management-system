@@ -8,6 +8,8 @@ const DEFAULT_TIMEOUT_MS = 15000;
 export interface AuthProps {
   username?: string;
   email: string;
+  // Login identifier — may be an email, unit number, or display name
+  identifier?: string;
   password: string;
 }
 
@@ -98,14 +100,18 @@ export const login = async (
   formData: AuthProps,
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
 ) => {
-  const { email, password } = formData;
+  const { email, identifier, password } = formData;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(
       `${BASE}/auth/login`,
-      options("POST", { email, password }, controller.signal),
+      options(
+        "POST",
+        { identifier: identifier ?? email, password },
+        controller.signal,
+      ),
     );
 
     const data = await response.json();
