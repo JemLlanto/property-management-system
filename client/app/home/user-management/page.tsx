@@ -165,6 +165,7 @@ const UserManagementPage = () => {
           originalUser={originalUser}
           errors={errors}
           buildings={buildings}
+          users={users}
           setUsers={setUsers}
           setBuildings={setBuildings}
           setForm={setForm}

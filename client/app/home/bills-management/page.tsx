@@ -14,6 +14,8 @@ import {
   emptyBillForm,
   getBills,
 } from "@/services/bill.service";
+import { BuildingDataProps, getBuildings } from "@/services/building.service";
+import BillDetailsModal from "./BillDetailsModal";
 import BillModal from "./BillModal";
 import BillTable from "./BillTable";
 
@@ -23,7 +25,9 @@ const BillsManagementPage = () => {
   const isLoading = useAppSelector((state) => state.loading.isLoading);
 
   const [bills, setBills] = useState<BillDataProps[]>([]);
+  const [buildings, setBuildings] = useState<BuildingDataProps[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [viewingBill, setViewingBill] = useState<BillDataProps | null>(null);
   const [editingBill, setEditingBill] = useState<BillDataProps | null>(null);
   const [form, setForm] = useState<BillFormDataProps>(emptyBillForm);
   const [errors, setErrors] = useState<Partial<BillFormDataProps>>({});
@@ -39,6 +43,10 @@ const BillsManagementPage = () => {
 
           const billRes = await getBills();
           setBills(billRes.bills ?? []);
+
+          // Buildings resolve the building names shown in the details modal
+          const buildingRes = await getBuildings();
+          setBuildings(buildingRes.buildings ?? []);
         } else {
           // Redirect to the landing page if not authenticated.
           router.push(`/`);
@@ -58,6 +66,11 @@ const BillsManagementPage = () => {
     setForm(emptyBillForm);
     setErrors({});
     setIsModalOpen(true);
+  };
+
+  // Open the read-only details modal showing payment standing per unit
+  const openDetailsModal = (bill: BillDataProps) => {
+    setViewingBill(bill);
   };
 
   const openEditModal = (bill: BillDataProps) => {
@@ -109,7 +122,17 @@ const BillsManagementPage = () => {
         openAddModal={openAddModal}
         openEditModal={openEditModal}
         handleDelete={handleDelete}
+        openDetailsModal={openDetailsModal}
       />
+
+      {/* Details Modal — payment standing per unit */}
+      {viewingBill && (
+        <BillDetailsModal
+          billId={viewingBill.bill_id}
+          buildings={buildings}
+          onClose={() => setViewingBill(null)}
+        />
+      )}
 
       {/* Add/Edit Modal */}
       {isModalOpen && (

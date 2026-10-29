@@ -20,6 +20,7 @@ interface ModalProps {
   originalUser: UserFormDataProps;
   errors: Partial<UserFormDataProps>;
   buildings: BuildingDataProps[];
+  users: UserDataProps[];
   setUsers: Dispatch<SetStateAction<UserDataProps[]>>;
   setBuildings: Dispatch<SetStateAction<BuildingDataProps[]>>;
   setForm: Dispatch<SetStateAction<UserFormDataProps>>;
@@ -33,6 +34,7 @@ const AddUserModal = ({
   originalUser,
   errors,
   buildings,
+  users,
   setUsers,
   setBuildings,
   setForm,
@@ -60,6 +62,19 @@ const AddUserModal = ({
       // Unit number doubles as the username/password when name and email are
       // blank, so it is mandatory for Unit Owner accounts.
       newErrors.unit_number = "Unit number is required";
+    }
+
+    // Unit numbers must be unique across all accounts
+    if (
+      form.unit_number.trim() &&
+      users.some(
+        (u) =>
+          u.unit_number?.toLowerCase() ===
+            form.unit_number.trim().toLowerCase() &&
+          u.user_id !== editingUser?.user_id,
+      )
+    ) {
+      newErrors.unit_number = `Unit number "${form.unit_number.trim()}" is already taken`;
     }
 
     // Unit Owners must be assigned to a building

@@ -61,6 +61,41 @@ async function findById(user_id) {
   return parseUser(user);
 }
 
+// Find a user by their unit number
+async function findByUnitNumber(unit_number) {
+  if (!unit_number || !String(unit_number).trim()) {
+    return null;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { unit_number: String(unit_number).trim() },
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  return parseUser(user);
+}
+
+// Unit numbers must be unique across the system
+async function assertUnitNumberAvailable(unit_number, excludeUserId = null) {
+  if (!unit_number || !String(unit_number).trim()) {
+    return;
+  }
+
+  const existing = await prisma.user.findUnique({
+    where: { unit_number: String(unit_number).trim() },
+    select: { user_id: true },
+  });
+
+  if (existing && existing.user_id !== excludeUserId) {
+    throw new Error(
+      `Unit number "${String(unit_number).trim()}" is already taken`,
+    );
+  }
+}
+
 // Find a user by email, unit number, or display name. The login form
 // accepts any of the three as the identifier.
 async function findByIdentifier(identifier) {
@@ -177,6 +212,9 @@ async function createUserByAdmin({ email, type, name, unit_number, building }) {
     throw new Error("A user with this email already exists");
   }
 
+  // Unit numbers must be unique
+  await assertUnitNumberAvailable(unit_number);
+
   // Generate a readable temporary password; the user can change it later.
   const tempPassword = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 10)();
 
@@ -221,6 +259,11 @@ async function updateUser(
       type === undefined || type === "Unit Owner" ? unit_number : null;
   } else if (type !== undefined && type !== "Unit Owner") {
     data.unit_number = null;
+  }
+
+  // Unit numbers must stay unique
+  if (data.unit_number) {
+    await assertUnitNumberAvailable(data.unit_number, user_id);
   }
 
   if (building !== undefined) data.building = building;
@@ -275,6 +318,8 @@ module.exports = {
   deleteUser,
   findByEmail,
   findById,
+  findByUnitNumber,
+  assertUnitNumberAvailable,
   findByIdentifier,
   validatePassword,
   addRefreshToken,

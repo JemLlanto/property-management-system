@@ -13,13 +13,12 @@ model User {
   password      String
   type          String   @default("Unit Owner") @map("type") @db.VarChar(20)
   name          String?  @map("name") @db.VarChar(100)
-  unit_number   String?  @map("unit_number") @db.VarChar(20)
+  unit_number   String?  @unique @map("unit_number") @db.VarChar(20)
   building      Int?     @map("building")
   refresh_tokens Json    @default("[]")
   created_at    DateTime? @default(now()) @map("created_at")
   updated_at    DateTime? @updatedAt @map("updated_at")
 
-  payments_made   Payment[] @relation("PaidBy")
   payments_recorded Payment[] @relation("RecordedBy")
 
   @@index([building])
@@ -67,16 +66,17 @@ model Bill {
 model Payment {
   payment_id    Int       @id @default(autoincrement()) @map("payment_id")
   bill_id       Int       @map("bill_id")
-  paid_by_id    String    @map("paid_by_id") @db.VarChar(12)
-  recorded_by_id String   @map("recorded_by_id") @db.VarChar(12)
+  // Unit number of the payer at payment time — a plain value, not a FK, so
+  // history survives the payer's account being edited or deleted.
+  paid_by_id    String?   @map("paid_by_id") @db.VarChar(20)
+  recorded_by_id String?  @map("recorded_by_id") @db.VarChar(12)
   amount        Decimal   @db.Decimal(10, 2)
   paid_at       DateTime  @default(now()) @map("paid_at")
   created_at    DateTime? @default(now()) @map("created_at")
   updated_at    DateTime? @default(now()) @updatedAt @map("updated_at")
 
-  bill       Bill @relation(fields: [bill_id], references: [bill_id])
-  paidBy     User @relation("PaidBy", fields: [paid_by_id], references: [user_id])
-  recordedBy User @relation("RecordedBy", fields: [recorded_by_id], references: [user_id])
+  bill       Bill   @relation(fields: [bill_id], references: [bill_id])
+  recordedBy User?  @relation("RecordedBy", fields: [recorded_by_id], references: [user_id], onDelete: SetNull)
 
   @@index([bill_id])
   @@index([paid_by_id])

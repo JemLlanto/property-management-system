@@ -2,16 +2,20 @@
 
 import { UserDataProps } from "@/services/user.service";
 import { BuildingDataProps } from "@/services/building.service";
+import { getUnpaidBills, UnpaidBillProps } from "@/services/payment.service";
 import { formatDate } from "@/utils/date.helper";
 import {
+  AlertTriangle,
   Building,
   CalendarDays,
+  CheckCircle2,
   Hash,
   Mail,
   User,
   UserRound,
   X,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface ModalProps {
   user: UserDataProps;
@@ -21,6 +25,40 @@ interface ModalProps {
 }
 
 const UserDetailsModal = ({ user, buildings, onClose, onEdit }: ModalProps) => {
+  const [unpaidBills, setUnpaidBills] = useState<UnpaidBillProps[]>([]);
+  const [isLoadingBills, setIsLoadingBills] = useState(false);
+
+  // Load unpaid bills for Unit Owners — a bill is unpaid when the owner has
+  // no payment for it since their account was created.
+  useEffect(() => {
+    if (user.type !== "Unit Owner") return;
+
+    let cancelled = false;
+
+    const loadUnpaid = async () => {
+      setIsLoadingBills(true);
+
+      try {
+        const response = await getUnpaidBills(user.user_id);
+
+        if (!cancelled) {
+          setUnpaidBills(response.unpaid_bills ?? []);
+        }
+      } catch (err) {
+        console.error("Error loading unpaid bills: ", err);
+      } finally {
+        if (!cancelled) {
+          setIsLoadingBills(false);
+        }
+      }
+    };
+
+    loadUnpaid();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user.user_id, user.type]);
   const building = user.building
     ? buildings.find((b) => b.building_id === user.building)
     : undefined;
@@ -67,7 +105,7 @@ const UserDetailsModal = ({ user, buildings, onClose, onEdit }: ModalProps) => {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative"
+        className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative max-h-[90vh] overflow-y-auto"
       >
         <button
           onClick={onClose}
@@ -132,6 +170,86 @@ const UserDetailsModal = ({ user, buildings, onClose, onEdit }: ModalProps) => {
             </div>
           ))}
         </div>
+
+        {/* Unpaid bills — Unit Owners only */}
+        {user.type === "Unit Owner" && (
+          <div className="mt-5 pt-4 border-t border-neutral-100">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-neutral-800">
+                Unpaid Bills
+              </h4>
+              {unpaidBills.length > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                  <AlertTriangle size={12} />
+                  {unpaidBills.length} unpaid
+                </span>
+              )}
+            </div>
+
+            {isLoadingBills ? (
+              <p className="text-sm text-neutral-400 py-2">Loading bills...</p>
+            ) : unpaidBills.length === 0 ? (
+              <div className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2">
+                <CheckCircle2 size={16} className="text-green-600 shrink-0" />
+                <p className="text-sm text-green-700">
+                  All bills are paid. No outstanding balance.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {unpaidBills.map((bill) => (
+                  <div
+                    key={bill.bill_id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2 bg-neutral-50"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-neutral-800 truncate">
+                        {bill.name}
+                      </p>
+                      <p className="text-xs text-neutral-500">
+                        {bill.due_date} · Paid {bill.paid_count}/
+                        {bill.occurrences}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-semibold text-neutral-800">
+                        ₱
+                        {(
+                          Number(bill.amount) * bill.missed_count
+                        ).toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </p>
+                      <p className="text-xs text-red-600">
+                        {bill.missed_count} missed
+                      </p>
+                    </div>
+                  </div>
+                ))}
+
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide">
+                    Total Outstanding
+                  </span>
+                  <span className="text-sm font-semibold text-red-600">
+                    ₱
+                    {unpaidBills
+                      .reduce(
+                        (sum, bill) =>
+                          sum + Number(bill.amount) * bill.missed_count,
+                        0,
+                      )
+                      .toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Timestamps */}
         <div className="mt-5 pt-4 border-t border-neutral-100 space-y-2">

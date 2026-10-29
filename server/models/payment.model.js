@@ -7,15 +7,6 @@ async function getAllPayments() {
       bill: {
         select: { bill_id: true, name: true, due_date: true, amount: true },
       },
-      paidBy: {
-        select: {
-          user_id: true,
-          name: true,
-          email: true,
-          unit_number: true,
-          building: true,
-        },
-      },
       recordedBy: {
         select: { user_id: true, name: true, email: true },
       },
@@ -30,19 +21,22 @@ async function findById(payment_id) {
   });
 }
 
-// Flatten the payment for the client response
+// Flatten the payment for the client response.
+// paid_by_id stores the payer's UNIT NUMBER (plain value, not a FK), so it
+// survives the payer's account being edited or deleted. recorded_by_id is
+// null once the recording account is deleted.
 function parsePayment(payment) {
   return {
     payment_id: payment.payment_id,
     bill_id: payment.bill_id,
     bill_name: payment.bill?.name ?? null,
     bill_due_date: payment.bill?.due_date ?? null,
-    paid_by_id: payment.paid_by_id,
-    unit_number: payment.paidBy?.unit_number ?? null,
-    owner_name: payment.paidBy?.name ?? null,
-    owner_email: payment.paidBy?.email ?? null,
-    owner_building: payment.paidBy?.building ?? null,
-    recorded_by_id: payment.recorded_by_id,
+    paid_by_id: payment.paid_by_id ?? null,
+    unit_number: payment.paid_by_id ?? null,
+    owner_name: null,
+    owner_email: null,
+    owner_building: null,
+    recorded_by_id: payment.recorded_by_id ?? null,
     recorded_by_name: payment.recordedBy?.name ?? null,
     recorded_by_email: payment.recordedBy?.email ?? null,
     amount: payment.amount,
@@ -63,11 +57,11 @@ async function createPayment({ bill_id, paid_by_id, recorded_by_id, amount }) {
   }
 
   const payer = await prisma.user.findUnique({
-    where: { user_id: String(paid_by_id) },
+    where: { unit_number: String(paid_by_id) },
   });
 
   if (!payer) {
-    throw new Error("Selected unit owner does not exist");
+    throw new Error("Selected unit number does not exist");
   }
 
   if (payer.type !== "Unit Owner") {
@@ -99,15 +93,6 @@ async function createPayment({ bill_id, paid_by_id, recorded_by_id, amount }) {
       bill: {
         select: { bill_id: true, name: true, due_date: true, amount: true },
       },
-      paidBy: {
-        select: {
-          user_id: true,
-          name: true,
-          email: true,
-          unit_number: true,
-          building: true,
-        },
-      },
       recordedBy: {
         select: { user_id: true, name: true, email: true },
       },
@@ -131,9 +116,287 @@ async function deletePayment(payment_id) {
   return payment;
 }
 
+// Bills the owner has not fully paid since their account was created.
+// Uses the same per-cycle rule as the bill details modal: a bill is unpaid
+// when the owner has fewer payments than the number of cycle occurrences
+// that elapsed since their created_at. Payments are matched by unit number.
+async function getUnpaidBillsForOwner(unit_number, created_at = null) {
+  const paidAfter = created_at ? new Date(created_at) : null;
+
+  const payments = await prisma.payment.findMany({
+    where: {
+      paid_by_id: String(unit_number),
+      ...(paidAfter ? { paid_at: { gte: paidAfter } } : {}),
+    },
+    select: { bill_id: true },
+  });
+
+  const paidCounts = new Map();
+
+  for (const p of payments) {
+    paidCounts.set(p.bill_id, (paidCounts.get(p.bill_id) ?? 0) + 1);
+  }
+
+  const bills = await prisma.bill.findMany({
+    orderBy: { bill_id: "desc" },
+  });
+
+  return bills
+    .map((bill) => {
+      const occurrences = countOccurrences(bill.due_date, created_at);
+      const paid = paidCounts.get(bill.bill_id) ?? 0;
+
+      return {
+        bill_id: bill.bill_id,
+        name: bill.name,
+        due_date: bill.due_date,
+        amount: bill.amount,
+        occurrences,
+        paid_count: Math.min(paid, occurrences),
+        missed_count: Math.max(0, occurrences - paid),
+      };
+    })
+    .filter((bill) => bill.missed_count > 0);
+}
+
+// Every unit owner together with the bills they have not paid.
+// Uses the same per-cycle rule as the bill details modal: a bill counts as
+// unpaid when the owner has not paid every cycle occurrence since their
+// account was created.
+async function getUnpaidBillsOverview() {
+  const owners = await prisma.user.findMany({
+    where: { type: "Unit Owner" },
+    select: {
+      user_id: true,
+      name: true,
+      email: true,
+      unit_number: true,
+      building: true,
+      created_at: true,
+    },
+    orderBy: { created_at: "desc" },
+  });
+
+  if (owners.length === 0) {
+    return [];
+  }
+
+  const bills = await prisma.bill.findMany({
+    orderBy: { bill_id: "desc" },
+  });
+
+  const payments = await prisma.payment.findMany({
+    select: { paid_by_id: true, bill_id: true, paid_at: true },
+  });
+
+  return owners.map((owner) => {
+    const paidAfter = owner.created_at ? new Date(owner.created_at) : null;
+
+    // Count payments per bill, only those on/after the owner's created_at.
+    // Payments are matched by unit number.
+    const paidCounts = new Map();
+
+    for (const p of payments) {
+      if (p.paid_by_id !== owner.unit_number) continue;
+      if (paidAfter && new Date(p.paid_at) < paidAfter) continue;
+
+      paidCounts.set(p.bill_id, (paidCounts.get(p.bill_id) ?? 0) + 1);
+    }
+
+    const unpaid_bills = bills
+      .filter((bill) => {
+        const occurrences = countOccurrences(bill.due_date, owner.created_at);
+        const paid = paidCounts.get(bill.bill_id) ?? 0;
+
+        return paid < occurrences;
+      })
+      .map((bill) => ({
+        bill_id: bill.bill_id,
+        name: bill.name,
+        due_date: bill.due_date,
+        amount: bill.amount,
+        paid_count: Math.min(
+          paidCounts.get(bill.bill_id) ?? 0,
+          countOccurrences(bill.due_date, owner.created_at),
+        ),
+        missed_count: Math.max(
+          0,
+          countOccurrences(bill.due_date, owner.created_at) -
+            (paidCounts.get(bill.bill_id) ?? 0),
+        ),
+      }));
+
+    const total_outstanding = unpaid_bills.reduce(
+      (sum, bill) => sum + Number(bill.amount) * bill.missed_count,
+      0,
+    );
+
+    return {
+      user_id: owner.user_id,
+      name: owner.name,
+      email: owner.email,
+      unit_number: owner.unit_number,
+      building: owner.building,
+      created_at: owner.created_at,
+      unpaid_bills,
+      unpaid_count: unpaid_bills.length,
+      total_outstanding,
+    };
+  });
+}
+
+// Number of billing cycles that elapsed between two dates.
+// The starting cycle counts as occurrence 1, so a monthly bill created
+// in June has occurrences 1 in June, 2 in July, ... 6 in November.
+function countOccurrences(cycle, fromDate, toDate = new Date()) {
+  const start = fromDate ? new Date(fromDate) : null;
+
+  if (!start || Number.isNaN(start.getTime())) {
+    return 0;
+  }
+
+  const end =
+    toDate && !Number.isNaN(new Date(toDate).getTime())
+      ? new Date(toDate)
+      : new Date();
+
+  if (end < start) {
+    return 0;
+  }
+
+  const startDay = new Date(
+    start.getFullYear(),
+    start.getMonth(),
+    start.getDate(),
+  );
+  const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  const dayDiff = Math.floor(
+    (endDay.getTime() - startDay.getTime()) / (24 * 60 * 60 * 1000),
+  );
+
+  switch (cycle) {
+    case "Weekly":
+      // A partial week still counts as an occurrence of its own
+      return 1 + Math.floor((dayDiff + 6) / 7);
+    case "Half-Month":
+      return 1 + Math.floor((dayDiff + 14) / 15);
+    case "Monthly": {
+      const months =
+        (endDay.getFullYear() - startDay.getFullYear()) * 12 +
+        (endDay.getMonth() - startDay.getMonth());
+      return 1 + Math.max(0, months);
+    }
+    case "Quarterly": {
+      const months =
+        (endDay.getFullYear() - startDay.getFullYear()) * 12 +
+        (endDay.getMonth() - startDay.getMonth());
+      return 1 + Math.max(0, Math.floor(months / 3));
+    }
+    default:
+      // Unknown cycle — fall back to a single occurrence
+      return 1;
+  }
+}
+
+// Per-bill breakdown for every unit owner: how many cycles have elapsed
+// since the owner was created, how many of those they paid, and how many
+// they missed.
+async function getBillOwnersReport(bill_id) {
+  const bill = await prisma.bill.findUnique({
+    where: { bill_id: Number(bill_id) },
+  });
+
+  if (!bill) {
+    return null;
+  }
+
+  const owners = await prisma.user.findMany({
+    where: { type: "Unit Owner" },
+    select: {
+      user_id: true,
+      name: true,
+      email: true,
+      unit_number: true,
+      building: true,
+      created_at: true,
+    },
+    orderBy: { unit_number: "asc" },
+  });
+
+  const payments = await prisma.payment.findMany({
+    where: { bill_id: Number(bill_id) },
+    select: { paid_by_id: true, paid_at: true, amount: true },
+  });
+
+  const paymentsByOwner = new Map();
+
+  for (const payment of payments) {
+    // Skip payments whose owner was deleted (paid_by_id is null)
+    if (!payment.paid_by_id) continue;
+
+    const list = paymentsByOwner.get(payment.paid_by_id) ?? [];
+    list.push(payment);
+    paymentsByOwner.set(payment.paid_by_id, list);
+  }
+
+  const rows = owners.map((owner) => {
+    // Payments are matched by unit number
+    const ownerPayments = (paymentsByOwner.get(owner.unit_number) ?? []).filter(
+      (p) =>
+        !owner.created_at || new Date(p.paid_at) >= new Date(owner.created_at),
+    );
+
+    const occurrences = countOccurrences(bill.due_date, owner.created_at);
+
+    // Every payment covers one cycle occurrence
+    const paid_count = Math.min(ownerPayments.length, occurrences);
+    const missed_count = Math.max(0, occurrences - ownerPayments.length);
+
+    return {
+      user_id: owner.user_id,
+      name: owner.name,
+      email: owner.email,
+      unit_number: owner.unit_number,
+      building: owner.building,
+      created_at: owner.created_at,
+      occurrences,
+      paid_count,
+      missed_count,
+      total_paid: ownerPayments.reduce(
+        (sum, p) => sum + Number(p.amount ?? 0),
+        0,
+      ),
+    };
+  });
+
+  // Default ordering: most misses first, then unit number
+  rows.sort((a, b) => {
+    if (b.missed_count !== a.missed_count) {
+      return b.missed_count - a.missed_count;
+    }
+
+    return (a.unit_number ?? "").localeCompare(b.unit_number ?? "", undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+  });
+
+  return {
+    bill_id: bill.bill_id,
+    bill_name: bill.name,
+    due_date: bill.due_date,
+    amount: bill.amount,
+    owners: rows,
+  };
+}
+
 module.exports = {
   getAllPayments,
   createPayment,
   deletePayment,
   parsePayment,
+  getUnpaidBillsForOwner,
+  getUnpaidBillsOverview,
+  getBillOwnersReport,
+  countOccurrences,
 };

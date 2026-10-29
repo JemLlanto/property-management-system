@@ -45,7 +45,7 @@ const UnitOwnerSelect = ({
   const [query, setQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const selected = unitOwners.find((o) => o.user_id === value);
+  const selected = unitOwners.find((o) => o.unit_number === value);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -144,7 +144,7 @@ const UnitOwnerSelect = ({
                       setQuery("");
                     }}
                     className={`w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 transition-colors ${
-                      owner.user_id === value
+                      owner.unit_number === value
                         ? "bg-neutral-100 font-medium"
                         : ""
                     }`}
@@ -247,7 +247,7 @@ const PaymentModal = ({
             value={form.paid_by_id}
             error={errors.paid_by_id}
             onChange={(owner) =>
-              setForm({ ...form, paid_by_id: owner.user_id })
+              setForm({ ...form, paid_by_id: owner.unit_number ?? "" })
             }
           />
 

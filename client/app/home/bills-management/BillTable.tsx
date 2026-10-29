@@ -9,6 +9,7 @@ interface TableProps {
   openAddModal: () => void;
   openEditModal: (bill: BillDataProps) => void;
   handleDelete: (bill: BillDataProps) => void;
+  openDetailsModal: (bill: BillDataProps) => void;
 }
 
 const BillTable = ({
@@ -17,6 +18,7 @@ const BillTable = ({
   openAddModal,
   openEditModal,
   handleDelete,
+  openDetailsModal,
 }: TableProps) => {
   return (
     <div className="w-full mx-auto p-5 bg-white border border-gray-200 rounded-xl shadow-sm font-sans">
@@ -59,7 +61,16 @@ const BillTable = ({
         bills.map((bill) => (
           <div
             key={bill.bill_id}
-            className="grid grid-cols-[2fr_1fr_1fr_auto] gap-2 items-center py-3 px-2 border-b border-neutral-100 hover:bg-neutral-50 transition-colors"
+            role="button"
+            tabIndex={0}
+            onClick={() => openDetailsModal(bill)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openDetailsModal(bill);
+              }
+            }}
+            className="grid grid-cols-[2fr_1fr_1fr_auto] gap-2 items-center py-3 px-2 border-b border-neutral-100 hover:bg-neutral-50 transition-colors cursor-pointer focus:outline-none focus-visible:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neutral-400"
           >
             <p className="text-left text-neutral-800">{bill.name}</p>
             <p className="text-center text-neutral-600">{bill.due_date}</p>
@@ -70,7 +81,10 @@ const BillTable = ({
                 maximumFractionDigits: 2,
               })}
             </p>
-            <div className="flex justify-end gap-1 w-20">
+            <div
+              className="flex justify-end gap-1 w-20"
+              onClick={(e) => e.stopPropagation()}
+            >
               <button
                 onClick={() => openEditModal(bill)}
                 className="p-1.5 rounded-md text-neutral-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"

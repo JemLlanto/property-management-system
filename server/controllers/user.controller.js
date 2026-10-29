@@ -67,6 +67,15 @@ async function createUser(req, res) {
       });
     }
 
+    // Unit numbers must be unique
+    if (unit_number) {
+      try {
+        await User.assertUnitNumberAvailable(unit_number);
+      } catch (err) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
+    }
+
     // Unit Owners must be assigned to a building
     let buildingId = null;
 
@@ -136,6 +145,15 @@ async function updateUser(req, res) {
         success: false,
         message: "Unit number is required for Unit Owner accounts",
       });
+    }
+
+    // Unit numbers must stay unique
+    if (unit_number !== undefined && unit_number) {
+      try {
+        await User.assertUnitNumberAvailable(unit_number, user_id);
+      } catch (err) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
     }
 
     const existing = await User.findById(user_id);

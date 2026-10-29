@@ -116,6 +116,7 @@ const PaymentsPage = () => {
         isLoading={isLoading}
         payments={payments}
         buildings={buildings}
+        unitOwners={unitOwners}
         openAddModal={openAddModal}
         handleDelete={handleDelete}
       />

@@ -1,4 +1,5 @@
 const Payment = require("../models/payment.model");
+const User = require("../models/user.model");
 
 // List all payments
 async function getPayments(req, res) {
@@ -58,8 +59,70 @@ async function deletePayment(req, res) {
   }
 }
 
+// Unpaid bills for a single unit owner (used by the user details modal)
+async function getUnpaidBills(req, res) {
+  try {
+    const { user_id } = req.params;
+
+    const owner = await User.findById(user_id);
+
+    if (!owner) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    if (!owner.unit_number) {
+      return res.json({ success: true, unpaid_bills: [] });
+    }
+
+    // Payments are matched by unit number
+    const unpaid_bills = await Payment.getUnpaidBillsForOwner(
+      owner.unit_number,
+      owner.created_at,
+    );
+
+    return res.json({ success: true, unpaid_bills });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+}
+
+// Overview of every unit owner with their unpaid bills
+async function getUnpaidOverview(req, res) {
+  try {
+    const owners = await Payment.getUnpaidBillsOverview();
+
+    return res.json({ success: true, owners });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// Per-bill breakdown of every unit owner's payment standing (missed cycles)
+async function getBillOwners(req, res) {
+  try {
+    const { bill_id } = req.params;
+
+    const report = await Payment.getBillOwnersReport(bill_id);
+
+    if (!report) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Bill not found" });
+    }
+
+    return res.json({ success: true, ...report });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+}
+
 module.exports = {
   getPayments,
   createPayment,
   deletePayment,
+  getUnpaidBills,
+  getUnpaidOverview,
+  getBillOwners,
 };
