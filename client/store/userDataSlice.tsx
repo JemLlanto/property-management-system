@@ -7,6 +7,7 @@ const initialState = {
   type: "",
   name: "",
   unit_number: "",
+  building: null as number | null,
   isLoggedIn: false,
 };
 
@@ -21,6 +22,7 @@ const userDataSlice = createSlice({
       state.type = action.payload.type || "";
       state.name = action.payload.name || "";
       state.unit_number = action.payload.unit_number || "";
+      state.building = action.payload.building ?? null;
       state.isLoggedIn = true;
     },
     clearUser: () => initialState,

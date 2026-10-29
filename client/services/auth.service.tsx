@@ -19,13 +19,21 @@ interface ServerUser {
   id?: string;
   username?: string;
   email: string;
+  type?: string;
+  name?: string | null;
+  unit_number?: string | null;
+  building?: number | null;
 }
 
 // Normalizes the server user payload into the shape the Redux store expects
 const normalizeUser = (user: ServerUser) => ({
   id: user.user_id ?? user.id ?? "",
-  username: user.username ?? "",
+  username: user.username ?? user.name ?? "",
   email: user.email ?? "",
+  type: user.type ?? "",
+  name: user.name ?? "",
+  unit_number: user.unit_number ?? "",
+  building: user.building ?? null,
 });
 
 // credentials: 'include' is CRITICAL — it tells fetch to send/receive cookies

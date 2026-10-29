@@ -16,6 +16,7 @@ export interface UserDataProps {
   type: UserType;
   name: string | null;
   unit_number: string | null;
+  building: number | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -27,6 +28,8 @@ export interface UserFormDataProps {
   type: UserType;
   name: string;
   unit_number: string;
+  // Building id — required for Unit Owner accounts
+  building: number | string | null;
 }
 
 export const emptyUserForm: UserFormDataProps = {
@@ -34,6 +37,7 @@ export const emptyUserForm: UserFormDataProps = {
   type: "Unit Owner",
   name: "",
   unit_number: "",
+  building: null,
 };
 
 // Unit number is only mandatory for Unit Owner accounts

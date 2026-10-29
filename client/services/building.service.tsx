@@ -10,6 +10,7 @@ export interface BuildingDataProps {
   building_id: number;
   name: string;
   capacity: number;
+  occupants: number;
   created_at?: string;
   updated_at?: string;
 }
