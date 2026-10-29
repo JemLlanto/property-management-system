@@ -17,6 +17,7 @@ const SideBar = () => {
     { name: "Settings", href: "/home/settings" },
     { name: "User Management", href: "/home/user-management" },
     { name: "Building Management", href: "/home/building-management" },
+    { name: "Bills Management", href: "/home/bills-management" },
   ];
 
   const handleLogout = async () => {

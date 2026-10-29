@@ -48,6 +48,17 @@ model Building {
   @@map("building")
 }
 
+model Bill {
+  bill_id    Int      @id @default(autoincrement()) @map("bill_id")
+  name       String   @map("name") @db.VarChar(100)
+  due_date   String   @map("due_date") @db.VarChar(20)
+  amount     Decimal  @db.Decimal(10, 2)
+  created_at DateTime? @default(now()) @map("created_at")
+  updated_at DateTime? @default(now()) @updatedAt @map("updated_at")
+
+  @@map("bill")
+}
+
 model Stock {
   id    Int    @id @default(autoincrement())
   name  String @db.VarChar(100)
