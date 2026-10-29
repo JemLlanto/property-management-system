@@ -56,9 +56,9 @@ const AddUserModal = ({
       newErrors.email = "Please enter a valid email address";
     }
 
-    if (!form.unit_number.trim()) {
+    if (form.type === "Unit Owner" && !form.unit_number.trim()) {
       // Unit number doubles as the username/password when name and email are
-      // blank, so it is mandatory either way.
+      // blank, so it is mandatory for Unit Owner accounts.
       newErrors.unit_number = "Unit number is required";
     }
 
@@ -197,9 +197,24 @@ const AddUserModal = ({
             </label>
             <select
               value={form.type}
-              onChange={(e) =>
-                setForm({ ...form, type: e.target.value as UserType })
-              }
+              onChange={(e) => {
+                const nextType = e.target.value as UserType;
+                const isUnitOwner = nextType === "Unit Owner";
+
+                // Unit number and building only apply to Unit Owners, so
+                // they are cleared when switching to another account type.
+                setForm({
+                  ...form,
+                  type: nextType,
+                  unit_number: isUnitOwner ? form.unit_number : "",
+                  building: isUnitOwner ? form.building : null,
+                });
+                setErrors((prev) => ({
+                  ...prev,
+                  unit_number: isUnitOwner ? prev.unit_number : undefined,
+                  building: isUnitOwner ? prev.building : undefined,
+                }));
+              }}
               className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800 bg-white"
             >
               {USER_TYPES.map((type) => (
@@ -210,27 +225,31 @@ const AddUserModal = ({
             </select>
           </div>
 
-          {/* Unit Number — always required; doubles as username + password
+          {/* Unit Number — Unit Owner only; doubles as username + password
               when name and email are blank */}
-          <div>
-            <label className="block text-sm font-medium text-neutral-600 mb-1">
-              Unit Number <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={form.unit_number}
-              onChange={(e) =>
-                setForm({ ...form, unit_number: e.target.value })
-              }
-              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800 ${
-                errors.unit_number ? "border-red-400" : "border-neutral-300"
-              }`}
-              placeholder="e.g. 12A"
-            />
-            {errors.unit_number && (
-              <p className="text-xs text-red-500 mt-1">{errors.unit_number}</p>
-            )}
-          </div>
+          {form.type === "Unit Owner" && (
+            <div>
+              <label className="block text-sm font-medium text-neutral-600 mb-1">
+                Unit Number <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={form.unit_number}
+                onChange={(e) =>
+                  setForm({ ...form, unit_number: e.target.value })
+                }
+                className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800 ${
+                  errors.unit_number ? "border-red-400" : "border-neutral-300"
+                }`}
+                placeholder="e.g. 12A"
+              />
+              {errors.unit_number && (
+                <p className="text-xs text-red-500 mt-1">
+                  {errors.unit_number}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Building — required for Unit Owner; shows current availability */}
           {form.type === "Unit Owner" && (

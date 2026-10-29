@@ -213,7 +213,16 @@ async function updateUser(
     data.type = type;
   }
   if (name !== undefined) data.name = name;
-  if (unit_number !== undefined) data.unit_number = unit_number;
+
+  // Unit numbers only belong to Unit Owner accounts — switching type away
+  // from Unit Owner clears the value instead of keeping a stale one.
+  if (unit_number !== undefined) {
+    data.unit_number =
+      type === undefined || type === "Unit Owner" ? unit_number : null;
+  } else if (type !== undefined && type !== "Unit Owner") {
+    data.unit_number = null;
+  }
+
   if (building !== undefined) data.building = building;
 
   const user = await prisma.user.update({
