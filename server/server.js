@@ -10,6 +10,7 @@ const userRoutes = require("./routes/user.route");
 const buildingRoutes = require("./routes/building.route");
 const billRoutes = require("./routes/bill.route");
 const paymentRoutes = require("./routes/payment.route");
+const dashboardRoutes = require("./routes/dashboard.route");
 const { requireAuth } = require("./middleware/auth.middleware");
 const { testConnection } = require("./lib/prisma");
 
@@ -31,6 +32,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/buildings", buildingRoutes);
 app.use("/api/bills", billRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 // Example protected route
 app.get("/api/protected", requireAuth, (req, res) => {
