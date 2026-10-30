@@ -102,7 +102,8 @@ async function getDashboardSummary(from, to) {
         },
       },
       orderBy: [{ paid_at: "asc" }, { payment_id: "asc" }],
-    }),    prisma.bill.findMany({
+    }),
+    prisma.bill.findMany({
       orderBy: { bill_id: "asc" },
     }),
     prisma.user.findMany({

@@ -214,7 +214,11 @@ function enumerateCycles(cycle, fromDate, toDate = new Date()) {
   const cycles = [];
   let deadline = getFirstDeadline(cycle, start);
 
-  for (let index = 0; index < 600 && deadline && deadline <= endDate; index += 1) {
+  for (
+    let index = 0;
+    index < 600 && deadline && deadline <= endDate;
+    index += 1
+  ) {
     cycles.push({ index, deadline: new Date(deadline) });
     deadline = getNextDeadline(cycle, deadline);
   }
@@ -379,10 +383,7 @@ function computeBillStanding({ bill, owner, payments, asOf = new Date() }) {
   }
 
   // Money paid beyond what the elapsed cycles required.
-  const totalPaid = payments.reduce(
-    (sum, p) => sum + Number(p.amount ?? 0),
-    0,
-  );
+  const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
   const committed = cycles.reduce(
     (sum, cycle) =>
       sum + Math.min(Number(covered.get(cycle.index) ?? 0), amountDue),

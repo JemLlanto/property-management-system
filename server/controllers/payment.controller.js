@@ -1,9 +1,6 @@
 const Payment = require("../models/payment.model");
 const User = require("../models/user.model");
-const {
-  recordAudit,
-  getAuditLogs,
-} = require("../services/audit.service");
+const { recordAudit, getAuditLogs } = require("../services/audit.service");
 const { parsePagination, paginationMeta } = require("../utils/pagination");
 
 // List payments. Supports ?page=&pageSize=&search=&bill_id=&from=&to= —

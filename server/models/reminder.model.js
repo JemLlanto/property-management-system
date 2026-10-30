@@ -59,7 +59,8 @@ async function getReminders({ windowDays = REMINDER_WINDOW_DAYS } = {}) {
     const ownerPayments = payments.filter(
       (p) =>
         p.paid_by_id === owner.unit_number &&
-        (!owner.created_at || new Date(p.paid_at) >= new Date(owner.created_at)),
+        (!owner.created_at ||
+          new Date(p.paid_at) >= new Date(owner.created_at)),
     );
 
     const overdue = [];

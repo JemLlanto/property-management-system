@@ -66,7 +66,11 @@ async function getPaymentsPaginated({
     where.OR = [
       ...(where.OR ?? []),
       { bill: { name: { contains: term } } },
-      { recordedBy: { OR: [{ name: { contains: term } }, { email: { contains: term } }] } },
+      {
+        recordedBy: {
+          OR: [{ name: { contains: term } }, { email: { contains: term } }],
+        },
+      },
     ];
   }
 
@@ -209,14 +213,16 @@ async function createPayment({
   let resolvedCycleIndex = null;
 
   if (cycles.length > 0) {
-    if (cycle_index !== undefined && cycle_index !== null && cycle_index !== "") {
+    if (
+      cycle_index !== undefined &&
+      cycle_index !== null &&
+      cycle_index !== ""
+    ) {
       const requested = Number(cycle_index);
       const match = cycles.find((c) => c.index === requested);
 
       if (!match) {
-        throw new Error(
-          "Cycle does not exist for the chosen payment date",
-        );
+        throw new Error("Cycle does not exist for the chosen payment date");
       }
 
       resolvedCycleIndex = requested;
@@ -228,7 +234,12 @@ async function createPayment({
           bill_id: Number(bill_id),
           paid_at: { lte: paidAt },
         },
-        select: { payment_id: true, amount: true, cycle_index: true, paid_at: true },
+        select: {
+          payment_id: true,
+          amount: true,
+          cycle_index: true,
+          paid_at: true,
+        },
       });
 
       const { covered } = allocatePaymentsToCycles(
@@ -286,7 +297,11 @@ async function deletePayment(payment_id) {
 // completed, missed, and when the next payment becomes due. Payments are
 // matched by unit number and settled by VALUE — partial payments leave the
 // cycle outstanding until the full amount is covered.
-async function getBillStandingsForOwner(unit_number, created_at = null, asOf = new Date()) {
+async function getBillStandingsForOwner(
+  unit_number,
+  created_at = null,
+  asOf = new Date(),
+) {
   const paidAfter = created_at ? new Date(created_at) : null;
 
   const payments = await prisma.payment.findMany({
@@ -394,7 +409,8 @@ async function getUnpaidBillsOverview() {
     const ownerPayments = payments.filter(
       (p) =>
         p.paid_by_id === owner.unit_number &&
-        (!owner.created_at || new Date(p.paid_at) >= new Date(owner.created_at)),
+        (!owner.created_at ||
+          new Date(p.paid_at) >= new Date(owner.created_at)),
     );
 
     const unpaid_bills = bills

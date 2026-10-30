@@ -181,7 +181,9 @@ const SettingsPage = () => {
                 type="button"
                 onClick={() => setPasswordVisible((prev) => !prev)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                aria-label={passwordVisible ? "Hide passwords" : "Show passwords"}
+                aria-label={
+                  passwordVisible ? "Hide passwords" : "Show passwords"
+                }
               >
                 {passwordVisible ? <EyeClosed size={16} /> : <Eye size={16} />}
               </button>

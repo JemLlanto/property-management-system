@@ -132,7 +132,9 @@ const validateBillFields = (
     const type = String(late_fee_type).trim().toLowerCase();
 
     if (!LATE_FEE_TYPES.includes(type)) {
-      throw new Error(`Late fee type must be one of: ${LATE_FEE_TYPES.join(", ")}`);
+      throw new Error(
+        `Late fee type must be one of: ${LATE_FEE_TYPES.join(", ")}`,
+      );
     }
 
     data.late_fee_type = type;
@@ -142,7 +144,9 @@ const validateBillFields = (
     const parsed = Number(late_fee_grace_days);
 
     if (!Number.isInteger(parsed) || parsed < 0) {
-      throw new Error("Late fee grace days must be a whole number of 0 or more");
+      throw new Error(
+        "Late fee grace days must be a whole number of 0 or more",
+      );
     }
 
     data.late_fee_grace_days = parsed;

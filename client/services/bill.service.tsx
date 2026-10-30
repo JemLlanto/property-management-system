@@ -146,7 +146,12 @@ export const getBillsPaginated = async (
   if (query.search) params.set("search", query.search);
   if (query.cycle) params.set("cycle", query.cycle);
 
-  const result = await request("GET", `?${params.toString()}`, undefined, timeoutMs);
+  const result = await request(
+    "GET",
+    `?${params.toString()}`,
+    undefined,
+    timeoutMs,
+  );
 
   return {
     success: result.success,
@@ -202,10 +207,16 @@ export const updateBill = async (
   if (formData.amount !== undefined && formData.amount !== null) {
     body.amount = Number(formData.amount);
   }
-  if (formData.discount_percent !== undefined && formData.discount_percent !== null) {
+  if (
+    formData.discount_percent !== undefined &&
+    formData.discount_percent !== null
+  ) {
     body.discount_percent = Number(formData.discount_percent);
   }
-  if (formData.late_fee_amount !== undefined && formData.late_fee_amount !== null) {
+  if (
+    formData.late_fee_amount !== undefined &&
+    formData.late_fee_amount !== null
+  ) {
     body.late_fee_amount = Number(formData.late_fee_amount);
   }
   if (formData.late_fee_type !== undefined) {

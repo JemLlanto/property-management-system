@@ -66,9 +66,9 @@ async function createBill(req, res) {
       action: "create",
       entity_type: "bill",
       entity_id: bill.bill_id,
-      summary: `Bill "${bill.name}" created — ₱${Number(
-        bill.amount,
-      ).toFixed(2)} (${bill.due_date})`,
+      summary: `Bill "${bill.name}" created — ₱${Number(bill.amount).toFixed(
+        2,
+      )} (${bill.due_date})`,
       after: bill,
     });
 

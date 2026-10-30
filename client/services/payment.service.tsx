@@ -205,7 +205,12 @@ export const getPaymentsPaginated = async (
   if (query.from) params.set("from", query.from);
   if (query.to) params.set("to", query.to);
 
-  const result = await request("GET", `?${params.toString()}`, undefined, timeoutMs);
+  const result = await request(
+    "GET",
+    `?${params.toString()}`,
+    undefined,
+    timeoutMs,
+  );
 
   return {
     success: result.success,

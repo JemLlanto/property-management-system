@@ -286,9 +286,7 @@ async function deleteUser(req, res) {
       action: "delete",
       entity_type: "user",
       entity_id: user_id,
-      summary: `User "${
-        existing?.name ?? existing?.email ?? user_id
-      }" deleted`,
+      summary: `User "${existing?.name ?? existing?.email ?? user_id}" deleted`,
       before: existing,
     });
 
