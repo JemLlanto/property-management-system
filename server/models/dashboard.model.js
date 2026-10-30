@@ -123,9 +123,7 @@ async function getDashboardSummary(from, to) {
   const ownersByUnit = new Map(
     owners.filter((o) => o.unit_number).map((o) => [o.unit_number, o]),
   );
-  const buildingsById = new Map(
-    buildings.map((b) => [b.building_id, b.name]),
-  );
+  const buildingsById = new Map(buildings.map((b) => [b.building_id, b.name]));
   const buildingNameFor = (buildingId) =>
     buildingsById.get(buildingId) ?? "Unassigned";
 
@@ -162,9 +160,7 @@ async function getDashboardSummary(from, to) {
   }
 
   // Average daily revenue — only counting days inside the window
-  const averageDailyRevenue = days.length
-    ? totalRevenue / days.length
-    : 0;
+  const averageDailyRevenue = days.length ? totalRevenue / days.length : 0;
 
   // ---------- Outstanding (arrears) ----------
   // Uses the same per-cycle rule as the rest of the app: an owner misses a
@@ -247,12 +243,15 @@ async function getDashboardSummary(from, to) {
   }
 
   // ---------- Occupancy ----------
+  // Derived from the users table so the count is self-correcting — a
+  // denormalised counter can drift (e.g. when an owner's building is null
+  // the counter misses them), but this always matches reality.
   const unitOwners = owners.length;
-  const totalCapacity = buildings.reduce((sum, b) => sum + (b.capacity ?? 0), 0);
-  const totalOccupants = buildings.reduce(
-    (sum, b) => sum + (b.occupants ?? 0),
+  const totalCapacity = buildings.reduce(
+    (sum, b) => sum + (b.capacity ?? 0),
     0,
   );
+  const totalOccupants = owners.filter((o) => o.building != null).length;
   const occupancyRate = totalCapacity
     ? (totalOccupants / totalCapacity) * 100
     : 0;
