@@ -40,10 +40,7 @@ const MetricCard = ({
             <p className="mt-1 text-xs text-neutral-500">{hint}</p>
           )}
         </div>
-        <div
-          className={`shrink-0 rounded-lg p-2 ${accent}`}
-          aria-hidden="true"
-        >
+        <div className={`shrink-0 rounded-lg p-2 ${accent}`} aria-hidden="true">
           <Icon size={18} />
         </div>
       </div>

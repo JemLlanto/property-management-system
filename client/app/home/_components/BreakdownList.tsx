@@ -39,7 +39,10 @@ const BreakdownList = ({
       {isLoading ? (
         <div className="space-y-3">
           {[0, 1, 2].map((row) => (
-            <div key={row} className="h-8 rounded bg-neutral-100 animate-pulse" />
+            <div
+              key={row}
+              className="h-8 rounded bg-neutral-100 animate-pulse"
+            />
           ))}
         </div>
       ) : data.length === 0 ? (

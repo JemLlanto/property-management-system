@@ -3,13 +3,7 @@
 import { checkUser } from "@/utils/auth.helper";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Activity,
-  Banknote,
-  TrendingUp,
-  Users,
-  Wallet,
-} from "lucide-react";
+import { Activity, Banknote, TrendingUp, Users, Wallet } from "lucide-react";
 import { useAppDispatch } from "@/store/hooks";
 import { setUser } from "@/store/userDataSlice";
 import {

@@ -323,7 +323,7 @@ function getFirstDeadline(cycle, created) {
       const nextQuarterEnd = quarterEnd + 3;
       return endOfMonth(
         nextQuarterEnd > 11 ? year + 1 : year,
-        (nextQuarterEnd % 12 + 12) % 12,
+        ((nextQuarterEnd % 12) + 12) % 12,
       );
     }
     default:

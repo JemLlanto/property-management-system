@@ -42,9 +42,7 @@ const ArrearsTable = ({ owners, isLoading }: ArrearsTableProps) => {
       </div>
 
       {isLoading ? (
-        <p className="text-center text-neutral-400 py-8 text-sm">
-          Loading...
-        </p>
+        <p className="text-center text-neutral-400 py-8 text-sm">Loading...</p>
       ) : owners.length === 0 ? (
         <p className="text-center text-neutral-400 py-8 text-sm">
           Every owner is settled up. Nice.

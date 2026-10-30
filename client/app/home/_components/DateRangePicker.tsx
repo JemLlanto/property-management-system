@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  RANGE_PRESETS,
-  RangePreset,
-} from "@/services/dashboard.service";
+import { RANGE_PRESETS, RangePreset } from "@/services/dashboard.service";
 import { CalendarDays, RefreshCw } from "lucide-react";
 
 interface DateRangePickerProps {
@@ -90,7 +87,10 @@ const DateRangePicker = ({
               aria-label="Refresh dashboard"
               className="flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white text-neutral-700 text-sm font-medium px-3 py-2 hover:bg-neutral-50 transition-colors disabled:opacity-50"
             >
-              <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
+              <RefreshCw
+                size={14}
+                className={isLoading ? "animate-spin" : ""}
+              />
               Refresh
             </button>
           </div>

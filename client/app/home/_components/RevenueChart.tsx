@@ -18,10 +18,7 @@ interface RevenueChartProps {
 const RevenueChart = ({ data, isLoading }: RevenueChartProps) => {
   const [hovered, setHovered] = useState<number | null>(null);
 
-  const max = useMemo(
-    () => Math.max(...data.map((d) => d.amount), 0),
-    [data],
-  );
+  const max = useMemo(() => Math.max(...data.map((d) => d.amount), 0), [data]);
 
   const total = useMemo(
     () => data.reduce((sum, d) => sum + d.amount, 0),
@@ -41,7 +38,12 @@ const RevenueChart = ({ data, isLoading }: RevenueChartProps) => {
     const maxBuckets = 60;
 
     if (data.length <= maxBuckets) {
-      return data.map((d) => ({ ...d, label: d.date, from: d.date, to: d.date }));
+      return data.map((d) => ({
+        ...d,
+        label: d.date,
+        from: d.date,
+        to: d.date,
+      }));
     }
 
     const size = Math.ceil(data.length / maxBuckets);
@@ -155,7 +157,8 @@ const RevenueChart = ({ data, isLoading }: RevenueChartProps) => {
             {buckets.map((bucket, index) => {
               const barHeight =
                 max > 0 ? (bucket.amount / max) * plotHeight : 0;
-              const x = padding.left + barSlot * index + (barSlot - barWidth) / 2;
+              const x =
+                padding.left + barSlot * index + (barSlot - barWidth) / 2;
               const y = padding.top + plotHeight - barHeight;
 
               return (
