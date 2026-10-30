@@ -58,6 +58,7 @@ export interface UnpaidBillProps {
   missed_count: number;
   // Money still owed on this bill after value-based cycle settling
   outstanding: number;
+  late_fees?: number;
 }
 
 // A bill whose current cycle has not completed yet — nothing is missed,
@@ -71,8 +72,18 @@ export interface IncomingBillProps {
   paid_count: number;
   missed_count: number;
   outstanding: number;
+  late_fees?: number;
+  // Advance credit available to settle the running cycle
+  credit?: number;
+  // True when advance credit has already paid the running cycle — the
+  // bill is settled ahead and is NOT incoming
+  running_paid?: boolean;
+  // Credit left over after the running cycle
+  remaining_credit?: number;
   // ISO date when the running cycle completes and payment becomes due
   next_due: string | null;
+  // "missed" | "on_track" | "paid_ahead"
+  status?: string;
 }
 
 // Unit owner with their unpaid bills (used by the user details modal)
@@ -239,6 +250,8 @@ export const getUnpaidBills = async (
     success: result.success,
     unpaid_bills: (result.unpaid_bills ?? []) as UnpaidBillProps[],
     incoming_bills: (result.incoming_bills ?? []) as IncomingBillProps[],
+    // Bills whose running cycle is already settled by advance payment
+    paid_ahead_bills: (result.paid_ahead_bills ?? []) as IncomingBillProps[],
   };
 };
 

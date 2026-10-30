@@ -133,7 +133,8 @@ async function deletePayment(req, res) {
 }
 
 // Bill standings for a single unit owner (used by the user details modal):
-// missed bills plus incoming bills whose cycle has not completed yet
+// missed bills, incoming bills whose cycle has not completed yet, and
+// bills already settled ahead by advance payments.
 async function getUnpaidBills(req, res) {
   try {
     const { user_id } = req.params;
@@ -147,16 +148,33 @@ async function getUnpaidBills(req, res) {
     }
 
     if (!owner.unit_number) {
-      return res.json({ success: true, unpaid_bills: [], incoming_bills: [] });
+      return res.json({
+        success: true,
+        unpaid_bills: [],
+        incoming_bills: [],
+        paid_ahead_bills: [],
+      });
     }
 
-    // Payments are matched by unit number
-    const [unpaid_bills, incoming_bills] = await Promise.all([
+    // Payments are matched by unit number. The standings carry the
+    // status of every bill, so paid-ahead is just a filter on them.
+    const [unpaid_bills, incoming_bills, all_standings] = await Promise.all([
       Payment.getUnpaidBillsForOwner(owner.unit_number, owner.created_at),
       Payment.getIncomingBillsForOwner(owner.unit_number, owner.created_at),
+      Payment.getBillStandingsForOwner(owner.unit_number, owner.created_at),
     ]);
 
-    return res.json({ success: true, unpaid_bills, incoming_bills });
+    // Bills whose running cycle has been settled by advance credit.
+    const paid_ahead_bills = all_standings.filter(
+      (bill) => bill.missed_count === 0 && bill.running_paid,
+    );
+
+    return res.json({
+      success: true,
+      unpaid_bills,
+      incoming_bills,
+      paid_ahead_bills,
+    });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
   }

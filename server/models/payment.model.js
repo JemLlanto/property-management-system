@@ -330,10 +330,23 @@ async function getBillStandingsForOwner(
       asOf,
     });
 
-    const next_due =
-      standing.occurrences === 0
-        ? getNextDueDate(bill.due_date, created_at)
-        : null;
+    // The running cycle's deadline — the next date this bill comes due.
+    // When every elapsed cycle is settled, this is the owner's next due
+    // date; if advance credit has already paid the running cycle, there
+    // is no next due date yet.
+    const next_due = standing.running_cycle
+      ? standing.running_cycle.deadline.toISOString()
+      : null;
+
+    // A bill is "incoming" when nothing is owed and the running cycle has
+    // NOT already been paid by advance credit.
+    const settled_ahead = standing.running_paid;
+    const status =
+      standing.missed_count > 0
+        ? "missed"
+        : settled_ahead
+          ? "paid_ahead"
+          : "on_track";
 
     return {
       bill_id: bill.bill_id,
@@ -345,10 +358,14 @@ async function getBillStandingsForOwner(
       missed_count: standing.missed_count,
       outstanding: standing.outstanding,
       late_fees: standing.late_fees,
-      // When the in-progress cycle becomes due (null if cycles already
-      // elapsed, in which case the bill is either missed or settled)
-      next_due: next_due ? next_due.toISOString() : null,
-      status: standing.missed_count > 0 ? "missed" : "on_track",
+      // Advance credit applied to the running cycle
+      credit: standing.credit,
+      running_paid: standing.running_paid,
+      remaining_credit: standing.remaining_credit,
+      // When the in-progress cycle becomes due (null if every cycle
+      // including the running one is already covered)
+      next_due: settled_ahead ? null : next_due,
+      status,
     };
   });
 }
@@ -364,10 +381,15 @@ async function getUnpaidBillsForOwner(unit_number, created_at = null) {
 
 // Bills that are not missed yet — the cycle is still running. Shown as
 // "incoming" so owners see what is coming up rather than an empty state.
+//
+// A bill whose running cycle has ALREADY been paid by advance credit is
+// excluded — it is not incoming, the owner already paid it.
 async function getIncomingBillsForOwner(unit_number, created_at = null) {
   const standings = await getBillStandingsForOwner(unit_number, created_at);
 
-  return standings.filter((bill) => bill.missed_count === 0);
+  return standings.filter(
+    (bill) => bill.missed_count === 0 && !bill.running_paid,
+  );
 }
 
 // Every unit owner together with the bills they have not paid.

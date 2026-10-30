@@ -85,6 +85,9 @@ async function getReminders({ windowDays = REMINDER_WINDOW_DAYS } = {}) {
         continue;
       }
 
+      // Already paid ahead — nothing to remind about.
+      if (standing.running_paid) continue;
+
       // Fully paid so far — remind only when the running cycle's
       // deadline falls inside the reminder window.
       const deadline = getNextCycleDeadline(bill.due_date);

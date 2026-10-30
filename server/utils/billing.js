@@ -226,6 +226,25 @@ function enumerateCycles(cycle, fromDate, toDate = new Date()) {
   return cycles;
 }
 
+// The billing cycle currently in progress — the first deadline still in
+// the future for this owner, as { index, deadline }. Index continues the
+// numbering of enumerateCycles, so a standing that combines elapsed and
+// running cycles stays consistent.
+//
+// Returns null when the owner has no creation date to anchor cycles to.
+function enumerateRunningCycle(cycle, fromDate, asOf = new Date()) {
+  const elapsed = enumerateCycles(cycle, fromDate, asOf);
+  const last = elapsed[elapsed.length - 1];
+
+  // No elapsed cycles yet: the first deadline IS the running cycle
+  // (it has not passed, so the period is still open).
+  const deadline = last ? getNextDeadline(cycle, last.deadline) : getFirstDeadline(cycle, new Date(fromDate));
+
+  if (!deadline) return null;
+
+  return { index: elapsed.length, deadline };
+}
+
 // Centavos of slack when comparing money — floating point sums like
 // 0.1 + 0.2 must not read as "not yet paid".
 const EPSILON = 0.005;
@@ -351,9 +370,16 @@ function lateFeeFor(bill, cycleDeadline, asOf = new Date()) {
 // `asOf` is the moment the standing is evaluated at — the cycles that had
 // elapsed by then are the ones that can be missed. It defaults to now.
 //
+// ADVANCE PAYMENTS: money paid for a cycle that has not come due yet is
+// an advance. The surplus left after every elapsed cycle is settled is
+// carried as `credit`, and that credit is applied to the running cycle.
+// So an owner who paid a full cycle in advance has a running cycle that
+// is already settled — it is not "incoming", and they do not get billed
+// for it again.
+//
 // Returns the number of elapsed cycles, how many of them are fully paid,
 // how many are still owed, the outstanding amount (including late fees),
-// and any overpayment (money paid beyond what was due).
+// and the advance credit not yet consumed by an elapsed cycle.
 function computeBillStanding({ bill, owner, payments, asOf = new Date() }) {
   const amountDue = cyclePrice(bill);
   const cycles = enumerateCycles(bill.due_date, owner.created_at, asOf);
@@ -382,7 +408,8 @@ function computeBillStanding({ bill, owner, payments, asOf = new Date() }) {
     late_fees += fee;
   }
 
-  // Money paid beyond what the elapsed cycles required.
+  // Money paid beyond what the elapsed cycles required. This is the
+  // owner's advance credit — it pays for the running cycle next.
   const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
   const committed = cycles.reduce(
     (sum, cycle) =>
@@ -390,13 +417,41 @@ function computeBillStanding({ bill, owner, payments, asOf = new Date() }) {
     0,
   );
 
+  const credit = Math.max(0, totalPaid - committed);
+
+  // The cycle currently running. It is not yet due, so it can never be
+  // "missed" — but advance credit may already have settled it.
+  const running = enumerateRunningCycle(bill.due_date, owner.created_at, asOf);
+
+  let running_paid = false;
+  let running_credit = 0;
+
+  if (running) {
+    // Credit covers the running cycle when there is enough of it left.
+    running_credit = Math.min(credit, amountDue);
+    running_paid = running_credit + EPSILON >= amountDue;
+  }
+
+  // Credit that goes beyond the running cycle is still unspent credit
+  // (it will cover the cycle after that).
+  const remaining_credit = Math.max(0, credit - running_credit);
+
   return {
     occurrences: cycles.length,
     paid_count,
     missed_count,
     outstanding: Math.round(outstanding * 100) / 100,
     late_fees: Math.round(late_fees * 100) / 100,
-    overpaid: Math.round(Math.max(0, totalPaid - committed) * 100) / 100,
+    // Advance credit available to settle the running cycle
+    credit: Math.round(credit * 100) / 100,
+    // The running (not yet due) cycle and whether credit has settled it
+    running_cycle: running,
+    running_paid,
+    running_credit: Math.round(running_credit * 100) / 100,
+    // Credit still unspent after the running cycle
+    remaining_credit: Math.round(remaining_credit * 100) / 100,
+    // Backwards-compatible alias
+    overpaid: Math.round(remaining_credit * 100) / 100,
     cycles,
     covered,
   };
@@ -411,6 +466,7 @@ module.exports = {
   getNextCycleDeadline,
   countOccurrences,
   enumerateCycles,
+  enumerateRunningCycle,
   allocatePaymentsToCycles,
   cycleBalance,
   cyclePrice,

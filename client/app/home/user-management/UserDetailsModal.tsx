@@ -32,6 +32,7 @@ interface ModalProps {
 const UserDetailsModal = ({ user, buildings, onClose, onEdit }: ModalProps) => {
   const [unpaidBills, setUnpaidBills] = useState<UnpaidBillProps[]>([]);
   const [incomingBills, setIncomingBills] = useState<IncomingBillProps[]>([]);
+  const [paidAheadBills, setPaidAheadBills] = useState<IncomingBillProps[]>([]);
   const [isLoadingBills, setIsLoadingBills] = useState(false);
 
   // Load bill standings for Unit Owners — missed bills plus the incoming
@@ -50,6 +51,7 @@ const UserDetailsModal = ({ user, buildings, onClose, onEdit }: ModalProps) => {
         if (!cancelled) {
           setUnpaidBills(response.unpaid_bills ?? []);
           setIncomingBills(response.incoming_bills ?? []);
+          setPaidAheadBills(response.paid_ahead_bills ?? []);
         }
       } catch (err) {
         console.error("Error loading unpaid bills: ", err);
@@ -310,6 +312,47 @@ const UserDetailsModal = ({ user, buildings, onClose, onEdit }: ModalProps) => {
                         })}
                     </span>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Paid ahead — advance payments that already cover the
+                running cycle, so nothing more is due for them */}
+            {paidAheadBills.length > 0 && (
+              <div className="mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold text-neutral-800">
+                    Paid in Advance
+                  </h4>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                    <CheckCircle2 size={12} />
+                    {paidAheadBills.length} settled
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  {paidAheadBills.map((bill) => (
+                    <div
+                      key={bill.bill_id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-emerald-100 px-3 py-2 bg-emerald-50/50"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-neutral-800 truncate">
+                          {bill.name}
+                        </p>
+                        <p className="text-xs text-neutral-500">
+                          {bill.due_date} cycle · advance credit of ₱
+                          {Number(bill.credit ?? 0).toLocaleString("en-US", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </p>
+                      </div>
+                      <p className="text-sm font-semibold text-emerald-600 shrink-0">
+                        Paid
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
