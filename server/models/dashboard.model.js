@@ -1,5 +1,6 @@
 const prisma = require("../lib/prisma");
 const Payment = require("./payment.model");
+const { computeBillStanding } = require("../utils/billing");
 
 // Default window when the client does not send a range: the last 30 days
 // up to and including today.
@@ -92,8 +93,7 @@ async function getDashboardSummary(from, to) {
         },
       },
       orderBy: [{ paid_at: "asc" }, { payment_id: "asc" }],
-    }),
-    prisma.bill.findMany({
+    }),    prisma.bill.findMany({
       orderBy: { bill_id: "asc" },
     }),
     prisma.user.findMany({
@@ -163,8 +163,9 @@ async function getDashboardSummary(from, to) {
   const averageDailyRevenue = days.length ? totalRevenue / days.length : 0;
 
   // ---------- Outstanding (arrears) ----------
-  // Uses the same per-cycle rule as the rest of the app: an owner misses a
-  // cycle when the cycle's deadline has passed and no payment covers it.
+  // Uses the same value-based cycle rule as the payment model: a cycle is
+  // settled when payments cover the full amount due — a partial payment
+  // leaves the remainder outstanding instead of marking the cycle paid.
   const arrearsByBill = new Map();
   const arrearsByBuilding = new Map();
   const arrearsByOwner = new Map();
@@ -192,35 +193,27 @@ async function getDashboardSummary(from, to) {
         !owner.created_at || new Date(p.paid_at) >= new Date(owner.created_at),
     );
 
-    const paidCounts = new Map();
-
-    for (const p of ownerPayments) {
-      paidCounts.set(p.bill_id, (paidCounts.get(p.bill_id) ?? 0) + 1);
-    }
-
     let ownerOutstanding = 0;
 
     for (const bill of bills) {
-      const occurrences = Payment.countOccurrences(
-        bill.due_date,
-        owner.created_at,
-      );
-      const paid = paidCounts.get(bill.bill_id) ?? 0;
-      const missed = Math.max(0, occurrences - paid);
+      const { outstanding } = computeBillStanding({
+        bill,
+        owner,
+        payments: ownerPayments.filter((p) => p.bill_id === bill.bill_id),
+      });
 
-      if (missed === 0) continue;
+      if (outstanding <= 0) continue;
 
-      const missedAmount = Number(bill.amount ?? 0) * missed;
-
-      ownerOutstanding += missedAmount;
+      ownerOutstanding += outstanding;
 
       arrearsByBill.set(
         bill.name,
-        (arrearsByBill.get(bill.name) ?? 0) + missedAmount,
+        (arrearsByBill.get(bill.name) ?? 0) + outstanding,
       );
     }
 
     if (ownerOutstanding > 0) {
+      ownerOutstanding = Math.round(ownerOutstanding * 100) / 100;
       ownersInArrears += 1;
 
       totalOutstanding += ownerOutstanding;

@@ -19,6 +19,10 @@ export interface PaymentDataProps {
   recorded_by_name: string | null;
   recorded_by_email: string | null;
   amount: number;
+  // The billing cycle this payment settles (null = lump-sum credit)
+  cycle_index: number | null;
+  // The amount due for that cycle at payment time
+  amount_due: number | null;
   paid_at: string;
   created_at?: string;
   updated_at?: string;
@@ -31,12 +35,16 @@ export interface PaymentFormDataProps {
   // The payer's UNIT NUMBER — stored directly on the payment
   paid_by_id: string;
   amount: number | string | null;
+  // Optional payment date (YYYY-MM-DD) — blank means "today". Allows
+  // backdating when money was received before it was recorded.
+  paid_at: string;
 }
 
 export const emptyPaymentForm: PaymentFormDataProps = {
   bill_id: null,
   paid_by_id: "",
   amount: null,
+  paid_at: "",
 };
 
 // A bill the owner has not fully paid since their account was created
@@ -48,6 +56,8 @@ export interface UnpaidBillProps {
   occurrences: number;
   paid_count: number;
   missed_count: number;
+  // Money still owed on this bill after value-based cycle settling
+  outstanding: number;
 }
 
 // A bill whose current cycle has not completed yet — nothing is missed,
@@ -60,6 +70,7 @@ export interface IncomingBillProps {
   occurrences: number;
   paid_count: number;
   missed_count: number;
+  outstanding: number;
   // ISO date when the running cycle completes and payment becomes due
   next_due: string | null;
 }
@@ -88,6 +99,7 @@ export interface BillOwnerRowProps {
   occurrences: number;
   paid_count: number;
   missed_count: number;
+  outstanding: number;
   total_paid: number;
 }
 
@@ -215,7 +227,8 @@ export const getBillOwnersReport = async (
   };
 };
 
-// Record a payment
+// Record a payment. paid_at is optional — blank means "today"; a
+// YYYY-MM-DD value backdates the payment to when the money was received.
 export const createPayment = async (
   formData: PaymentFormDataProps,
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
@@ -227,6 +240,7 @@ export const createPayment = async (
       bill_id: formData.bill_id,
       paid_by_id: formData.paid_by_id,
       amount: Number(formData.amount),
+      ...(formData.paid_at ? { paid_at: formData.paid_at } : {}),
     },
     timeoutMs,
   );

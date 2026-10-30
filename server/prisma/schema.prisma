@@ -71,6 +71,14 @@ model Payment {
   paid_by_id    String?   @map("paid_by_id") @db.VarChar(20)
   recorded_by_id String?  @map("recorded_by_id") @db.VarChar(12)
   amount        Decimal   @db.Decimal(10, 2)
+  // The cycle this payment settles. Null means the payment is not tied to
+  // a specific cycle (a lump-sum credit). Multiple partial payments can
+  // share a cycle — they are summed, and the cycle is only settled once
+  // the total reaches the amount due.
+  cycle_index   Int?      @map("cycle_index")
+  // The amount due for that cycle at the time of payment, so a later bill
+  // edit does not retroactively change what was owed.
+  amount_due    Decimal?  @map("amount_due") @db.Decimal(10, 2)
   paid_at       DateTime  @default(now()) @map("paid_at")
   created_at    DateTime? @default(now()) @map("created_at")
   updated_at    DateTime? @default(now()) @updatedAt @map("updated_at")
@@ -84,6 +92,8 @@ model Payment {
   // The dashboard range filter and history ordering both filter/sort on
   // paid_at — without this index every query is a full table scan.
   @@index([paid_at])
+  // Cycle lookups are always scoped to one payer AND one bill.
+  @@index([paid_by_id, bill_id, cycle_index])
   @@map("payment")
 }
 

@@ -201,6 +201,21 @@ const PaymentModal = ({
       newErrors.amount = "Amount must be greater than 0";
     }
 
+    if (form.paid_at) {
+      const chosen = new Date(`${form.paid_at}T00:00:00`);
+
+      if (Number.isNaN(chosen.getTime())) {
+        newErrors.paid_at = "Payment date is invalid";
+      } else {
+        const endOfDay = new Date(chosen);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        if (endOfDay > new Date()) {
+          newErrors.paid_at = "Payment date cannot be in the future";
+        }
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -213,6 +228,7 @@ const PaymentModal = ({
         bill_id: form.bill_id,
         paid_by_id: form.paid_by_id,
         amount: Number(form.amount),
+        paid_at: form.paid_at,
       });
 
       if (response.success) {
@@ -288,7 +304,9 @@ const PaymentModal = ({
             )}
           </div>
 
-          {/* Amount — prefilled from the selected bill, still editable */}
+          {/* Amount — prefilled from the selected bill, still editable.
+              A partial amount is allowed — it settles part of a cycle and
+              the remainder stays outstanding. */}
           <div>
             <label className="block text-sm font-medium text-neutral-600 mb-1">
               Amount <span className="text-red-500">*</span>
@@ -307,6 +325,33 @@ const PaymentModal = ({
             {errors.amount && (
               <p className="text-xs text-red-500 mt-1">{errors.amount}</p>
             )}
+            <p className="text-xs text-neutral-400 mt-1">
+              Partial payments are accepted — the remaining balance stays
+              outstanding.
+            </p>
+          </div>
+
+          {/* Payment date — optional, blank means today. Lets you
+              backdate money that was received earlier. */}
+          <div>
+            <label className="block text-sm font-medium text-neutral-600 mb-1">
+              Payment Date
+            </label>
+            <input
+              type="date"
+              max={new Date().toISOString().split("T")[0]}
+              value={form.paid_at}
+              onChange={(e) => setForm({ ...form, paid_at: e.target.value })}
+              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800 ${
+                errors.paid_at ? "border-red-400" : "border-neutral-300"
+              }`}
+            />
+            {errors.paid_at && (
+              <p className="text-xs text-red-500 mt-1">{errors.paid_at}</p>
+            )}
+            <p className="text-xs text-neutral-400 mt-1">
+              Leave blank to use today&apos;s date.
+            </p>
           </div>
         </div>
 

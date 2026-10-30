@@ -18,13 +18,15 @@ async function getPayments(req, res) {
 // Record a payment
 async function createPayment(req, res) {
   try {
-    const { bill_id, paid_by_id, amount } = req.body;
+    const { bill_id, paid_by_id, amount, paid_at, cycle_index } = req.body;
 
     const payment = await Payment.createPayment({
       bill_id,
       paid_by_id,
       recorded_by_id: req.user.user_id,
       amount,
+      paid_at,
+      cycle_index,
     });
 
     return res.status(201).json({
