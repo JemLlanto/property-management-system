@@ -166,7 +166,7 @@ const LoginForm = () => {
       </div>
 
       <div className="text-center mt-6 text-sm">
-        <span className="text-gray-500">Don't have an account?</span>{" "}
+        <span className="text-gray-500">Don&apos;t have an account?</span>{" "}
         <button
           type="button"
           className="text-blue-500 font-medium hover:underline"
