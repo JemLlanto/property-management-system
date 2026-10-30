@@ -204,6 +204,35 @@ export const logout = async () => {
   return data;
 };
 
+// Change the signed-in user's password. The server revokes every refresh
+// token, so all sessions must sign in again afterwards.
+export const changePassword = async (
+  currentPassword: string,
+  newPassword: string,
+) => {
+  const response = await fetch(
+    `${BASE}/auth/change-password`,
+    options("POST", {
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    Swal.fire({
+      icon: "error",
+      title: "Password Change Failed",
+      text: data.message || "Something went wrong. Please try again.",
+    });
+
+    return { success: false, message: data.message };
+  }
+
+  return { success: true, message: data.message };
+};
+
 export const getMe = () =>
   authFetch(`${BASE}/auth/me`, options("GET"))
     .then((r) => r.json())

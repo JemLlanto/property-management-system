@@ -183,4 +183,30 @@ async function me(req, res) {
   });
 }
 
-module.exports = { register, login, refresh, logout, me };
+// Change the signed-in user's own password. All refresh tokens are
+// revoked, so every other session must log in again.
+async function changePassword(req, res) {
+  try {
+    const { current_password, new_password } = req.body;
+
+    if (!current_password || !new_password) {
+      return res.status(400).json({
+        success: false,
+        message: "Current and new passwords are required",
+      });
+    }
+
+    await User.changePassword(req.user.user_id, current_password, new_password);
+
+    clearAuthCookies(res);
+
+    return res.json({
+      success: true,
+      message: "Password changed. Please sign in again.",
+    });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+}
+
+module.exports = { register, login, refresh, logout, me, changePassword };

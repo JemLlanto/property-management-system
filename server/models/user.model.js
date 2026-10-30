@@ -125,6 +125,47 @@ async function validatePassword(password, hashedPassword) {
   return bcrypt.compare(password, hashedPassword);
 }
 
+// Change a user's own password. Verifies the current password first so a
+// stolen session cannot lock the real owner out.
+async function changePassword(user_id, currentPassword, newPassword) {
+  if (!newPassword || String(newPassword).length < 8) {
+    throw new Error("New password must be at least 8 characters");
+  }
+
+  const user = await prisma.user.findUnique({ where: { user_id } });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const valid = await bcrypt.compare(currentPassword, user.password);
+
+  if (!valid) {
+    throw new Error("Current password is incorrect");
+  }
+
+  const sameAsOld = await bcrypt.compare(newPassword, user.password);
+
+  if (sameAsOld) {
+    throw new Error("New password must be different from the current one");
+  }
+
+  await prisma.user.update({
+    where: { user_id },
+    data: { password: await bcrypt.hash(newPassword, 10) },
+  });
+
+  // Every refresh token is revoked so other sessions are forced to log
+  // in again — a password change that leaves stolen sessions alive has
+  // not really secured anything.
+  await prisma.user.update({
+    where: { user_id },
+    data: { refresh_tokens: [] },
+  });
+
+  return true;
+}
+
 async function addRefreshToken(user, token) {
   const refreshTokens = user.refresh_tokens || [];
 
@@ -363,6 +404,7 @@ module.exports = {
   assertUnitNumberAvailable,
   findByIdentifier,
   validatePassword,
+  changePassword,
   addRefreshToken,
   removeRefreshToken,
   hasRefreshToken,
