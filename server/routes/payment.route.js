@@ -14,5 +14,6 @@ router.get(
 );
 router.post("/", requireAuth, paymentController.createPayment);
 router.delete("/:payment_id", requireAuth, paymentController.deletePayment);
+router.get("/audit", requireAuth, paymentController.getPaymentAuditTrail);
 
 module.exports = router;

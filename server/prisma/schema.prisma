@@ -97,6 +97,33 @@ model Payment {
   @@map("payment")
 }
 
+// Append-only audit trail. Every create/update/delete of a bill, payment,
+// user or building is recorded here with the actor, the action and the
+// before/after state. Rows are never updated or deleted by the app.
+model AuditLog {
+  audit_id    Int       @id @default(autoincrement()) @map("audit_id")
+  // The user who performed the action (null if the account was deleted)
+  actor_id    String?   @map("actor_id") @db.VarChar(12)
+  actor_name  String?   @map("actor_name") @db.VarChar(100)
+  // "create" | "update" | "delete"
+  action      String    @map("action") @db.VarChar(20)
+  // "bill" | "payment" | "user" | "building"
+  entity_type String    @map("entity_type") @db.VarChar(50)
+  entity_id   String?   @map("entity_id") @db.VarChar(64)
+  // Human-readable summary, e.g. "Payment recorded for unit 203-B"
+  summary     String?   @map("summary") @db.VarChar(255)
+  // The entity's state before the change (null for creates)
+  before_state Json?    @map("before_state")
+  // The entity's state after the change (null for deletes)
+  after_state  Json?    @map("after_state")
+  created_at   DateTime @default(now()) @map("created_at")
+
+  @@index([created_at])
+  @@index([entity_type, entity_id])
+  @@index([actor_id])
+  @@map("audit_log")
+}
+
 model Stock {
   id    Int    @id @default(autoincrement())
   name  String @db.VarChar(100)

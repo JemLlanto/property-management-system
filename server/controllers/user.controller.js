@@ -1,5 +1,6 @@
 const User = require("../models/user.model");
 const Building = require("../models/building.model");
+const { recordAudit } = require("../services/audit.service");
 
 // Normalises the building reference coming from the client
 function parseBuilding(value) {
@@ -114,6 +115,15 @@ async function createUser(req, res) {
       await Building.adjustOccupants(buildingId, 1);
     }
 
+    await recordAudit({
+      actor: req.user,
+      action: "create",
+      entity_type: "user",
+      entity_id: user.user_id,
+      summary: `User "${user.name ?? user.email}" created (${user.type})`,
+      after: user,
+    });
+
     return res.status(201).json({
       success: true,
       message: "User created successfully",
@@ -203,6 +213,16 @@ async function updateUser(req, res) {
       }
     }
 
+    await recordAudit({
+      actor: req.user,
+      action: "update",
+      entity_type: "user",
+      entity_id: user_id,
+      summary: `User "${user.name ?? user.email}" updated`,
+      before: existing,
+      after: user,
+    });
+
     return res.json({
       success: true,
       message: "User updated successfully",
@@ -234,6 +254,17 @@ async function deleteUser(req, res) {
     if (existing && existing.building) {
       await Building.adjustOccupants(existing.building, -1);
     }
+
+    await recordAudit({
+      actor: req.user,
+      action: "delete",
+      entity_type: "user",
+      entity_id: user_id,
+      summary: `User "${
+        existing?.name ?? existing?.email ?? user_id
+      }" deleted`,
+      before: existing,
+    });
 
     return res.json({ success: true, message: "User deleted successfully" });
   } catch (err) {

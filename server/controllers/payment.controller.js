@@ -1,5 +1,9 @@
 const Payment = require("../models/payment.model");
 const User = require("../models/user.model");
+const {
+  recordAudit,
+  getAuditLogs,
+} = require("../services/audit.service");
 
 // List all payments
 async function getPayments(req, res) {
@@ -29,6 +33,17 @@ async function createPayment(req, res) {
       cycle_index,
     });
 
+    await recordAudit({
+      actor: req.user,
+      action: "create",
+      entity_type: "payment",
+      entity_id: payment.payment_id,
+      summary: `Payment recorded for unit ${paid_by_id} — ₱${Number(
+        amount,
+      ).toFixed(2)} (${payment.bill_name ?? "bill"})`,
+      after: payment,
+    });
+
     return res.status(201).json({
       success: true,
       message: "Payment recorded successfully",
@@ -39,6 +54,24 @@ async function createPayment(req, res) {
   }
 }
 
+// Append-only trail of payment creates and deletes — money moves must
+// always be reconstructable, including who did it and when.
+async function getPaymentAuditTrail(req, res) {
+  try {
+    const { page, pageSize, entity_type, actor_id } = req.query;
+
+    const result = await getAuditLogs({
+      page,
+      pageSize,
+      entity_type,
+      actor_id,
+    });
+
+    return res.json({ success: true, ...result });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+}
 // Delete a payment record
 async function deletePayment(req, res) {
   try {
@@ -51,6 +84,17 @@ async function deletePayment(req, res) {
         .status(404)
         .json({ success: false, message: "Payment not found" });
     }
+
+    await recordAudit({
+      actor: req.user,
+      action: "delete",
+      entity_type: "payment",
+      entity_id: payment_id,
+      summary: `Payment deleted for unit ${payment.paid_by_id ?? "—"} — ₱${Number(
+        payment.amount,
+      ).toFixed(2)}`,
+      before: payment,
+    });
 
     return res.json({
       success: true,
@@ -128,4 +172,5 @@ module.exports = {
   getUnpaidBills,
   getUnpaidOverview,
   getBillOwners,
+  getPaymentAuditTrail,
 };

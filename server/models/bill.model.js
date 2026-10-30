@@ -19,6 +19,14 @@ async function findByName(name, excludeId = null) {
   });
 }
 
+// Find a bill by its id — used to capture the "before" state for the
+// audit trail before an update overwrites it.
+async function findById(bill_id) {
+  return prisma.bill.findUnique({
+    where: { bill_id: Number(bill_id) },
+  });
+}
+
 const validateBillFields = ({ name, due_date, amount }, partial = false) => {
   const data = {};
 
@@ -109,6 +117,8 @@ async function deleteBill(bill_id) {
 
 module.exports = {
   getAllBills,
+  findByName,
+  findById,
   createBill,
   updateBill,
   deleteBill,
