@@ -81,6 +81,9 @@ model Payment {
   @@index([bill_id])
   @@index([paid_by_id])
   @@index([recorded_by_id])
+  // The dashboard range filter and history ordering both filter/sort on
+  // paid_at — without this index every query is a full table scan.
+  @@index([paid_at])
   @@map("payment")
 }
 
