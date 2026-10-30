@@ -4,15 +4,45 @@ const {
   recordAudit,
   getAuditLogs,
 } = require("../services/audit.service");
+const { parsePagination, paginationMeta } = require("../utils/pagination");
 
-// List all payments
+// List payments. Supports ?page=&pageSize=&search=&bill_id=&from=&to= —
+// omitting all of them returns the full list (legacy behaviour).
 async function getPayments(req, res) {
   try {
-    const payments = await Payment.getAllPayments();
+    const supportsPagination =
+      req.query.page !== undefined ||
+      req.query.search !== undefined ||
+      req.query.bill_id !== undefined ||
+      req.query.from !== undefined ||
+      req.query.to !== undefined;
+
+    if (!supportsPagination) {
+      const payments = await Payment.getAllPayments();
+
+      return res.json({
+        success: true,
+        payments: payments.map(Payment.parsePayment),
+      });
+    }
+
+    const { page, pageSize, skip, take } = parsePagination(req.query);
+
+    const result = await Payment.getPaymentsPaginated({
+      page,
+      pageSize,
+      skip,
+      take,
+      search: req.query.search,
+      bill_id: req.query.bill_id,
+      from: req.query.from,
+      to: req.query.to,
+    });
 
     return res.json({
       success: true,
-      payments: payments.map(Payment.parsePayment),
+      payments: result.payments.map(Payment.parsePayment),
+      ...paginationMeta(result),
     });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });

@@ -124,6 +124,41 @@ export const getBills = async (timeoutMs: number = DEFAULT_TIMEOUT_MS) => {
   return { success: result.success, bills: result.bills ?? [] };
 };
 
+// Query parameters accepted by the paginated bills endpoint
+export interface BillListQueryProps {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  cycle?: string;
+}
+
+// A page of bills, with an optional search term and cycle filter.
+export const getBillsPaginated = async (
+  query: BillListQueryProps = {},
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+) => {
+  const params = new URLSearchParams();
+
+  if (query.page !== undefined) params.set("page", String(query.page));
+  if (query.pageSize !== undefined) {
+    params.set("pageSize", String(query.pageSize));
+  }
+  if (query.search) params.set("search", query.search);
+  if (query.cycle) params.set("cycle", query.cycle);
+
+  const result = await request("GET", `?${params.toString()}`, undefined, timeoutMs);
+
+  return {
+    success: result.success,
+    bills: (result.bills ?? []) as BillDataProps[],
+    page: result.page ?? 1,
+    pageSize: result.pageSize ?? 0,
+    total: result.total ?? 0,
+    total_pages: result.total_pages ?? 0,
+    has_more: result.has_more ?? false,
+  };
+};
+
 // Create a bill
 export const createBill = async (
   formData: BillFormDataProps,

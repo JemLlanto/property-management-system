@@ -2,8 +2,9 @@
 
 import { checkUser } from "@/utils/auth.helper";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
+import { Search } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setUser } from "@/store/userDataSlice";
 import { setIsLoading } from "@/store/isLoading.slice";
@@ -12,7 +13,7 @@ import {
   PaymentFormDataProps,
   deletePayment,
   emptyPaymentForm,
-  getPayments,
+  getPaymentsPaginated,
 } from "@/services/payment.service";
 import { getBills, BillDataProps } from "@/services/bill.service";
 import { BuildingDataProps, getBuildings } from "@/services/building.service";
@@ -33,11 +34,30 @@ const PaymentsPage = () => {
   const [form, setForm] = useState<PaymentFormDataProps>(emptyPaymentForm);
   const [errors, setErrors] = useState<Partial<PaymentFormDataProps>>({});
 
+  // Pagination + search state. Search is debounced so typing does not
+  // fire a request per keystroke.
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(25);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
   // Only Unit Owner accounts can have payments recorded against them
   const unitOwners = useMemo(
     () => users.filter((u) => u.type === "Unit Owner"),
     [users],
   );
+
+  // Load one page of payments, plus the lookup data the table needs
+  // (bills, unit owners and buildings are small — fetched in full).
+  const loadPayments = useCallback(async () => {
+    const result = await getPaymentsPaginated({ page, pageSize, search });
+
+    setPayments(result.payments);
+    setTotal(result.total);
+    setTotalPages(result.total_pages);
+  }, [page, pageSize, search]);
 
   // Checking user authorization and loading payments plus lookup data
   useEffect(() => {
@@ -48,11 +68,13 @@ const PaymentsPage = () => {
         if (response.success) {
           dispatch(setUser(response.user));
 
-          const [paymentRes, billRes, userRes, buildingRes] = await Promise.all(
-            [getPayments(), getBills(), getUsers(), getBuildings()],
-          );
+          const [, billRes, userRes, buildingRes] = await Promise.all([
+            loadPayments(),
+            getBills(),
+            getUsers(),
+            getBuildings(),
+          ]);
 
-          setPayments(paymentRes.payments ?? []);
           setBills(billRes.bills ?? []);
           setUsers(userRes.users ?? []);
           setBuildings(buildingRes.buildings ?? []);
@@ -68,7 +90,23 @@ const PaymentsPage = () => {
     };
 
     validateUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reload payments when the page or search changes
+  useEffect(() => {
+    loadPayments();
+  }, [loadPayments]);
+
+  // Debounce the search box — 300ms after the last keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1); // a new search restarts at the first page
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const openAddModal = () => {
     setForm(emptyPaymentForm);
@@ -112,6 +150,23 @@ const PaymentsPage = () => {
 
   return (
     <div className="pt-2">
+      {/* Search */}
+      <div className="w-full mx-auto mb-3 max-w-md">
+        <div className="relative">
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+          />
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search by unit number, bill or recorder..."
+            className="w-full rounded-lg border border-neutral-300 bg-white pl-9 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800"
+          />
+        </div>
+      </div>
+
       <PaymentTable
         isLoading={isLoading}
         payments={payments}
@@ -120,6 +175,32 @@ const PaymentsPage = () => {
         openAddModal={openAddModal}
         handleDelete={handleDelete}
       />
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="w-full mx-auto mt-3 flex items-center justify-between text-sm text-neutral-600">
+          <span>
+            {total} payment{total === 1 ? "" : "s"} · Page {page} of{" "}
+            {totalPages}
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1 || isLoading}
+              className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages || isLoading}
+              className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Record Payment Modal */}
       {isModalOpen && (

@@ -1,12 +1,38 @@
 const Bill = require("../models/bill.model");
 const { recordAudit } = require("../services/audit.service");
+const { parsePagination, paginationMeta } = require("../utils/pagination");
 
-// List all bills
+// List bills. Supports ?page=&pageSize=&search=&cycle= — omitting all of
+// them returns the full list (legacy behaviour for dropdowns).
 async function getBills(req, res) {
   try {
-    const bills = await Bill.getAllBills();
+    const supportsPagination =
+      req.query.page !== undefined ||
+      req.query.search !== undefined ||
+      req.query.cycle !== undefined;
 
-    return res.json({ success: true, bills });
+    if (!supportsPagination) {
+      const bills = await Bill.getAllBills();
+
+      return res.json({ success: true, bills });
+    }
+
+    const { page, pageSize, skip, take } = parsePagination(req.query);
+
+    const result = await Bill.getBillsPaginated({
+      page,
+      pageSize,
+      skip,
+      take,
+      search: req.query.search,
+      cycle: req.query.cycle,
+    });
+
+    return res.json({
+      success: true,
+      bills: result.bills,
+      ...paginationMeta(result),
+    });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }

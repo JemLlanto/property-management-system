@@ -44,6 +44,36 @@ export const emptyUserForm: UserFormDataProps = {
 export const requiresUnitNumber = (type: UserType): boolean =>
   type === "Unit Owner";
 
+// Pagination metadata returned alongside a page of results
+export interface PaginationProps {
+  page: number;
+  pageSize: number;
+  total: number;
+  total_pages: number;
+  has_more: boolean;
+}
+
+// Query parameters accepted by the paginated list endpoints
+export interface ListQueryProps {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  type?: string;
+}
+
+// Build a query string from the list parameters, skipping empty values.
+const buildQuery = (params: Record<string, string | number | undefined>) => {
+  const query = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === "") continue;
+
+    query.set(key, String(value));
+  }
+
+  return query.toString();
+};
+
 // List every user in the system
 export const getUsers = async (timeoutMs: number = DEFAULT_TIMEOUT_MS) => {
   const controller = new AbortController();
@@ -68,6 +98,73 @@ export const getUsers = async (timeoutMs: number = DEFAULT_TIMEOUT_MS) => {
     }
 
     return { success: true, users: payload.users ?? [] };
+  } catch (err) {
+    const isTimeout = err instanceof DOMException && err.name === "AbortError";
+
+    Swal.fire({
+      icon: "error",
+      title: isTimeout ? "Request Timed Out" : "Network Error",
+      text: isTimeout
+        ? "The server took too long to respond. Please try again."
+        : "Something went wrong. Please try again.",
+    });
+
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
+// A page of users, with an optional search term and type filter.
+export const getUsersPaginated = async (
+  query: ListQueryProps = {},
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  const search = buildQuery({
+    page: query.page,
+    pageSize: query.pageSize,
+    search: query.search,
+    type: query.type,
+  });
+
+  try {
+    const response = await authFetch(
+      `${BASE}/users${search ? `?${search}` : ""}`,
+      options("GET", undefined, controller.signal),
+    );
+
+    const payload = await response.json();
+
+    if (!response.ok) {
+      Swal.fire({
+        icon: "error",
+        title: "Fetching Users Failed",
+        text: payload.message || "Something went wrong. Please try again.",
+      });
+
+      return {
+        success: false,
+        users: [],
+        page: 1,
+        pageSize: 0,
+        total: 0,
+        total_pages: 0,
+        has_more: false,
+      };
+    }
+
+    return {
+      success: true,
+      users: payload.users ?? [],
+      page: payload.page ?? 1,
+      pageSize: payload.pageSize ?? 0,
+      total: payload.total ?? 0,
+      total_pages: payload.total_pages ?? 0,
+      has_more: payload.has_more ?? false,
+    };
   } catch (err) {
     const isTimeout = err instanceof DOMException && err.name === "AbortError";
 

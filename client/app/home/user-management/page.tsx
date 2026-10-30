@@ -2,8 +2,9 @@
 
 import { checkUser } from "@/utils/auth.helper";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Swal from "sweetalert2";
+import { Search } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setUser } from "@/store/userDataSlice";
 import { setIsLoading } from "@/store/isLoading.slice";
@@ -11,6 +12,7 @@ import {
   deleteUser,
   emptyUserForm,
   getUsers,
+  getUsersPaginated,
   UserDataProps,
   UserFormDataProps,
 } from "@/services/user.service";
@@ -35,6 +37,24 @@ const UserManagementPage = () => {
     useState<UserFormDataProps>(emptyUserForm);
   const [errors, setErrors] = useState<Partial<UserFormDataProps>>({});
 
+  // Pagination + search state. Search is debounced so typing does not
+  // fire a request per keystroke.
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(25);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Load one page of users, with the current search term
+  const loadUsers = useCallback(async () => {
+    const result = await getUsersPaginated({ page, pageSize, search });
+
+    setUsers(result.users);
+    setTotal(result.total);
+    setTotalPages(result.total_pages);
+  }, [page, pageSize, search]);
+
   // Checking user authorization and loading the user list
   useEffect(() => {
     const validateUser = async () => {
@@ -44,8 +64,7 @@ const UserManagementPage = () => {
         if (response.success) {
           dispatch(setUser(response.user));
 
-          const userRes = await getUsers();
-          setUsers(userRes.users ?? []);
+          await loadUsers();
 
           // Buildings populate the Unit Owner building dropdown
           const buildingRes = await getBuildings();
@@ -62,7 +81,28 @@ const UserManagementPage = () => {
     };
 
     validateUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reload users when the page or search changes
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
+  // Debounce the search box — 300ms after the last keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  // After create/update, refresh the current page of users
+  const refreshUsers = async () => {
+    await loadUsers();
+  };
 
   const openAddModal = () => {
     setEditingUser(null);
@@ -123,6 +163,8 @@ const UserManagementPage = () => {
         setUsers((prev) => prev.filter((u) => u.user_id !== user.user_id));
         // The deleted user's building slot is freed
         refreshBuildings();
+        // The page may now have a row too few
+        refreshUsers();
         Swal.fire({
           icon: "success",
           title: "User deleted",
@@ -137,6 +179,23 @@ const UserManagementPage = () => {
 
   return (
     <div className="pt-2">
+      {/* Search */}
+      <div className="w-full mx-auto mb-3 max-w-md">
+        <div className="relative">
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+          />
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search by name, email or unit number..."
+            className="w-full rounded-lg border border-neutral-300 bg-white pl-9 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800"
+          />
+        </div>
+      </div>
+
       <UserTable
         isLoading={isLoading}
         users={users}
@@ -146,6 +205,31 @@ const UserManagementPage = () => {
         handleDelete={handleDelete}
         openDetailsModal={openDetailsModal}
       />
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="w-full mx-auto mt-3 flex items-center justify-between text-sm text-neutral-600">
+          <span>
+            {total} user{total === 1 ? "" : "s"} · Page {page} of {totalPages}
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1 || isLoading}
+              className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages || isLoading}
+              className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Details Modal */}
       {viewingUser && (

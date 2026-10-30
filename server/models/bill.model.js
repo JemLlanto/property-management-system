@@ -1,4 +1,5 @@
 const prisma = require("../lib/prisma");
+const { buildSearchWhere } = require("../utils/pagination");
 
 // Allowed billing cycles
 const BILLING_CYCLES = ["Weekly", "Half-Month", "Monthly", "Quarterly"];
@@ -11,6 +12,34 @@ async function getAllBills() {
   return prisma.bill.findMany({
     orderBy: { bill_id: "desc" },
   });
+}
+
+// A page of bills, optionally filtered by a search term (name) and a
+// minimum amount.
+async function getBillsPaginated({
+  page = 1,
+  pageSize = 50,
+  skip = 0,
+  take = 50,
+  search = "",
+  cycle = "",
+} = {}) {
+  const where = {
+    ...(cycle ? { due_date: cycle } : {}),
+    ...buildSearchWhere(search, { name: "contains" }),
+  };
+
+  const [bills, total] = await Promise.all([
+    prisma.bill.findMany({
+      where,
+      orderBy: { bill_id: "desc" },
+      skip,
+      take,
+    }),
+    prisma.bill.count({ where }),
+  ]);
+
+  return { bills, total, page, pageSize };
 }
 
 async function findByName(name, excludeId = null) {
@@ -173,6 +202,7 @@ async function deleteBill(bill_id) {
 
 module.exports = {
   getAllBills,
+  getBillsPaginated,
   findByName,
   findById,
   createBill,

@@ -3,6 +3,7 @@ const { customAlphabet } = require("nanoid");
 const { Decimal } = require("@prisma/client");
 
 const prisma = require("../lib/prisma");
+const { buildSearchWhere } = require("../utils/pagination");
 
 const USER_TYPES = ["Unit Owner", "Admin", "Super Admin"];
 
@@ -161,6 +162,45 @@ async function getAllUsers() {
   return users.map(toPublicUser);
 }
 
+// A page of users, optionally filtered by a search term and a type.
+// `columns` are the fields the search term is matched against.
+async function getUsersPaginated({
+  page = 1,
+  pageSize = 50,
+  skip = 0,
+  take = 50,
+  search = "",
+  type = "",
+} = {}) {
+  const where = {
+    ...(type ? { type } : {}),
+    ...buildSearchWhere(search, {
+      name: "contains",
+      email: "contains",
+      unit_number: "contains",
+    }),
+  };
+
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      orderBy: { created_at: "desc" },
+      skip,
+      take,
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  return {
+    users: users.map(toPublicUser),
+    total,
+    page,
+    pageSize,
+    total_pages: Math.ceil(total / pageSize),
+    has_more: page * pageSize < total,
+  };
+}
+
 // Admin-facing create: generates a temporary password and returns it once.
 // Email is optional — when name AND email are blank, the unit number becomes
 // both the username (stored in email) and the password.
@@ -314,6 +354,7 @@ module.exports = {
   createUser,
   createUserByAdmin,
   getAllUsers,
+  getUsersPaginated,
   updateUser,
   deleteUser,
   findByEmail,

@@ -1,4 +1,5 @@
 const prisma = require("../lib/prisma");
+const { buildSearchWhere } = require("../utils/pagination");
 const {
   EPSILON,
   endOfMonth,
@@ -28,6 +29,68 @@ async function getAllPayments() {
     },
     orderBy: [{ paid_at: "desc" }, { payment_id: "desc" }],
   });
+}
+
+// A page of payments, newest first, optionally filtered by a search
+// term (unit number, bill name or recorder name) and a date range.
+// The search runs against stored values only — the bill name filter is
+// resolved through the relation.
+async function getPaymentsPaginated({
+  page = 1,
+  pageSize = 50,
+  skip = 0,
+  take = 50,
+  search = "",
+  bill_id = null,
+  from = null,
+  to = null,
+} = {}) {
+  const where = {
+    ...(bill_id ? { bill_id: Number(bill_id) } : {}),
+    ...(from || to
+      ? {
+          paid_at: {
+            ...(from ? { gte: new Date(from) } : {}),
+            ...(to ? { lte: new Date(to) } : {}),
+          },
+        }
+      : {}),
+    ...buildSearchWhere(search, { paid_by_id: "contains" }),
+  };
+
+  // Bill name and recorder name live on relations, so they need their
+  // own OR arm merged into the search.
+  const term = String(search ?? "").trim();
+
+  if (term) {
+    where.OR = [
+      ...(where.OR ?? []),
+      { bill: { name: { contains: term } } },
+      { recordedBy: { OR: [{ name: { contains: term } }, { email: { contains: term } }] } },
+    ];
+  }
+
+  const include = {
+    bill: {
+      select: { bill_id: true, name: true, due_date: true, amount: true },
+    },
+    recordedBy: {
+      select: { user_id: true, name: true, email: true },
+    },
+  };
+
+  const [payments, total] = await Promise.all([
+    prisma.payment.findMany({
+      where,
+      include,
+      orderBy: [{ paid_at: "desc" }, { payment_id: "desc" }],
+      skip,
+      take,
+    }),
+    prisma.payment.count({ where }),
+  ]);
+
+  return { payments, total, page, pageSize };
 }
 
 async function findById(payment_id) {
@@ -478,6 +541,7 @@ async function getBillOwnersReport(bill_id) {
 
 module.exports = {
   getAllPayments,
+  getPaymentsPaginated,
   createPayment,
   deletePayment,
   parsePayment,

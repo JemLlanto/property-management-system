@@ -1,6 +1,7 @@
 const User = require("../models/user.model");
 const Building = require("../models/building.model");
 const { recordAudit } = require("../services/audit.service");
+const { parsePagination, paginationMeta } = require("../utils/pagination");
 
 // Normalises the building reference coming from the client
 function parseBuilding(value) {
@@ -17,13 +18,38 @@ function parseBuilding(value) {
   return buildingId;
 }
 
-// List all users (any authenticated user can view; tighten with role checks
-// later if needed)
+// List users. Supports ?page=&pageSize=&search=&type= — omitting all of
+// them returns the full list (legacy behaviour for dropdowns that need
+// every owner).
 async function getUsers(req, res) {
   try {
-    const users = await User.getAllUsers();
+    const supportsPagination =
+      req.query.page !== undefined ||
+      req.query.search !== undefined ||
+      req.query.type !== undefined;
 
-    return res.json({ success: true, users });
+    if (!supportsPagination) {
+      const users = await User.getAllUsers();
+
+      return res.json({ success: true, users });
+    }
+
+    const { page, pageSize, skip, take } = parsePagination(req.query);
+
+    const result = await User.getUsersPaginated({
+      page,
+      pageSize,
+      skip,
+      take,
+      search: req.query.search,
+      type: req.query.type,
+    });
+
+    return res.json({
+      success: true,
+      users: result.users,
+      ...paginationMeta(result),
+    });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }

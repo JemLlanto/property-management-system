@@ -178,6 +178,46 @@ export const getPayments = async (timeoutMs: number = DEFAULT_TIMEOUT_MS) => {
   return { success: result.success, payments: result.payments ?? [] };
 };
 
+// Query parameters accepted by the paginated payments endpoint
+export interface PaymentListQueryProps {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  bill_id?: number | string;
+  from?: string;
+  to?: string;
+}
+
+// A page of payments, newest first, with an optional search term, bill
+// filter and date range.
+export const getPaymentsPaginated = async (
+  query: PaymentListQueryProps = {},
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+) => {
+  const params = new URLSearchParams();
+
+  if (query.page !== undefined) params.set("page", String(query.page));
+  if (query.pageSize !== undefined) {
+    params.set("pageSize", String(query.pageSize));
+  }
+  if (query.search) params.set("search", query.search);
+  if (query.bill_id) params.set("bill_id", String(query.bill_id));
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
+
+  const result = await request("GET", `?${params.toString()}`, undefined, timeoutMs);
+
+  return {
+    success: result.success,
+    payments: (result.payments ?? []) as PaymentDataProps[],
+    page: result.page ?? 1,
+    pageSize: result.pageSize ?? 0,
+    total: result.total ?? 0,
+    total_pages: result.total_pages ?? 0,
+    has_more: result.has_more ?? false,
+  };
+};
+
 // Bill standings for a single unit owner: missed plus incoming bills
 export const getUnpaidBills = async (
   userId: string,
