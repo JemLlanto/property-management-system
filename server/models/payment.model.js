@@ -396,6 +396,61 @@ function getNextDueDate(cycle, created) {
   return null;
 }
 
+// The next calendar deadline for a cycle, independent of any account.
+// The deadlines are anchored to the calendar (Sundays, the 15th and the last
+// day of the month, quarter ends), so every owner sees the same cycle
+// boundaries once their first partial period is behind them.
+function getNextCycleDeadline(cycle, from = new Date()) {
+  const year = from.getFullYear();
+  const month = from.getMonth();
+  const day = from.getDate();
+
+  // The end of today — a deadline that falls today still counts.
+  const endOfToday = new Date(year, month, day, 23, 59, 59, 999);
+
+  switch (cycle) {
+    case "Weekly": {
+      // Every Sunday. Today counts when it is a Sunday.
+      const offset = (7 - from.getDay()) % 7;
+      return new Date(year, month, day + offset, 23, 59, 59, 999);
+    }
+    case "Half-Month": {
+      // The 15th and the last day of the month.
+      const mid = new Date(year, month, 15, 23, 59, 59, 999);
+
+      if (mid >= endOfToday) return mid;
+
+      const last = endOfMonth(year, month);
+
+      if (last >= endOfToday) return last;
+
+      return new Date(year, month + 1, 15, 23, 59, 59, 999);
+    }
+    case "Monthly": {
+      // The last day of the month.
+      const last = endOfMonth(year, month);
+
+      if (last >= endOfToday) return last;
+
+      return endOfMonth(year, month + 1);
+    }
+    case "Quarterly": {
+      // Mar 31, Jun 30, Sep 30, Dec 31.
+      const quarterEnds = [2, 5, 8, 11]; // 0-based months
+
+      for (const qMonth of quarterEnds) {
+        const end = endOfMonth(year, qMonth);
+
+        if (end >= endOfToday) return end;
+      }
+
+      return endOfMonth(year + 1, 2);
+    }
+    default:
+      return endOfMonth(year, month + 1);
+  }
+}
+
 // Number of billing cycles that have fully elapsed between two dates.
 // A cycle only counts once its deadline DATE has been reached — the cycle
 // currently in progress is not due yet, so it cannot be missed. E.g. a
@@ -543,4 +598,8 @@ module.exports = {
   getBillOwnersReport,
   countOccurrences,
   getNextDueDate,
+  getFirstDeadline,
+  getNextDeadline,
+  endOfMonth,
+  getNextCycleDeadline,
 };
