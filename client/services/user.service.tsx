@@ -1,7 +1,7 @@
 // services/user.service.tsx
 
 import Swal from "sweetalert2";
-import { options } from "./auth.service";
+import { authFetch, options } from "./auth.service";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL;
 const DEFAULT_TIMEOUT_MS = 15000;
@@ -50,7 +50,7 @@ export const getUsers = async (timeoutMs: number = DEFAULT_TIMEOUT_MS) => {
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(
+    const response = await authFetch(
       `${BASE}/users`,
       options("GET", undefined, controller.signal),
     );
@@ -94,7 +94,7 @@ export const createUser = async (
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(
+    const response = await authFetch(
       `${BASE}/users`,
       options("POST", formData, controller.signal),
     );
@@ -139,7 +139,7 @@ export const updateUser = async (
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(
+    const response = await authFetch(
       `${BASE}/users/${userId}`,
       options("PATCH", formData, controller.signal),
     );
@@ -183,7 +183,7 @@ export const deleteUser = async (
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(
+    const response = await authFetch(
       `${BASE}/users/${userId}`,
       options("DELETE", undefined, controller.signal),
     );

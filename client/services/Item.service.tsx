@@ -1,7 +1,7 @@
 // services/auth.ts
 
 import Swal from "sweetalert2";
-import { options } from "./auth.service";
+import { authFetch, options } from "./auth.service";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL;
 const DEFAULT_TIMEOUT_MS = 15000;
@@ -88,7 +88,7 @@ export const itemService = async (
               ? "Fetching Item Failed"
               : "Invalid Method";
 
-    const response = await fetch(
+    const response = await authFetch(
       `${BASE}/${apiRoute}`,
       options(method, body, controller.signal),
     );

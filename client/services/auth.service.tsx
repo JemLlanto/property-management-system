@@ -156,6 +156,45 @@ export const login = async (
   }
 };
 
+// Asks the server to rotate the refresh token and mint a new access token.
+// The server sets fresh httpOnly cookies, so nothing needs storing here.
+export const refreshTokens = async (): Promise<boolean> => {
+  try {
+    const response = await fetch(`${BASE}/auth/refresh`, options("POST"));
+    return response.ok;
+  } catch {
+    return false;
+  }
+};
+
+// Guards against multiple concurrent requests all trying to refresh
+let refreshInFlight: Promise<boolean> | null = null;
+
+const refreshOnce = () => {
+  refreshInFlight ??= refreshTokens().finally(() => {
+    refreshInFlight = null;
+  });
+
+  return refreshInFlight;
+};
+
+// Drop-in replacement for fetch() on authenticated endpoints: transparently
+// refreshes the access token once and retries when the server returns 401
+// (e.g. the 1h access token expired).
+export const authFetch = async (
+  url: string,
+  init?: RequestInit,
+): Promise<Response> => {
+  const response = await fetch(url, init);
+
+  if (response.status !== 401) return response;
+
+  const refreshed = await refreshOnce();
+  if (!refreshed) return response;
+
+  return fetch(url, init);
+};
+
 // No token to clear manually — the server sends an expired cookie
 export const logout = async () => {
   const response = await fetch(`${BASE}/auth/logout`, options("POST"));
@@ -166,7 +205,7 @@ export const logout = async () => {
 };
 
 export const getMe = () =>
-  fetch(`${BASE}/auth/me`, options("GET"))
+  authFetch(`${BASE}/auth/me`, options("GET"))
     .then((r) => r.json())
     .then((data) =>
       data?.user ? { ...data, user: normalizeUser(data.user) } : data,

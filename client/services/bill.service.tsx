@@ -1,7 +1,7 @@
 // services/bill.service.tsx
 
 import Swal from "sweetalert2";
-import { options } from "./auth.service";
+import { authFetch, options } from "./auth.service";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL;
 const DEFAULT_TIMEOUT_MS = 15000;
@@ -62,7 +62,7 @@ const request = async (
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(
+    const response = await authFetch(
       `${BASE}/bills${path}`,
       options(method, body, controller.signal),
     );

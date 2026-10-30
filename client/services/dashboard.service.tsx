@@ -1,7 +1,7 @@
 // services/dashboard.service.tsx
 
 import Swal from "sweetalert2";
-import { options } from "./auth.service";
+import { authFetch, options } from "./auth.service";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL;
 const DEFAULT_TIMEOUT_MS = 20000;
@@ -122,7 +122,7 @@ export const getDashboard = async (
   const query = params.toString();
 
   try {
-    const response = await fetch(
+    const response = await authFetch(
       `${BASE}/dashboard${query ? `?${query}` : ""}`,
       options("GET", undefined, controller.signal),
     );
