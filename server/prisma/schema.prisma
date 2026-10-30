@@ -55,6 +55,17 @@ model Bill {
   name       String   @map("name") @db.VarChar(100)
   due_date   String   @map("due_date") @db.VarChar(20)
   amount     Decimal  @db.Decimal(10, 2)
+  // Optional discount applied to every cycle of this bill, expressed as a
+  // percentage (e.g. 10 = 10% off). Null or 0 means no discount.
+  discount_percent Decimal @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  // Late fee charged on each missed cycle. Fixed amount per cycle.
+  late_fee_amount   Decimal @default(0) @map("late_fee_amount") @db.Decimal(10, 2)
+  // Grace period in days after a cycle deadline before the late fee
+  // applies. 0 means the fee is charged from the deadline onward.
+  late_fee_grace_days Int    @default(0) @map("late_fee_grace_days")
+  // Whether the late fee is a flat amount per missed cycle or a
+  // percentage of the cycle amount ("fixed" | "percent").
+  late_fee_type      String  @default("fixed") @map("late_fee_type") @db.VarChar(10)
   created_at DateTime? @default(now()) @map("created_at")
   updated_at DateTime? @default(now()) @updatedAt @map("updated_at")
 

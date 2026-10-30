@@ -10,7 +10,16 @@ export interface BillDataProps {
   bill_id: number;
   name: string;
   due_date: string;
+  // List price per cycle, before the discount
   amount: number;
+  // Percentage off the list price for every cycle (0–99.99)
+  discount_percent: number;
+  // Late fee charged per missed cycle once the grace period elapses
+  late_fee_amount: number;
+  // "fixed" (flat amount) | "percent" (of the discounted cycle price)
+  late_fee_type: "fixed" | "percent";
+  // Days after the cycle deadline before the fee applies
+  late_fee_grace_days: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -29,12 +38,20 @@ export interface BillFormDataProps {
   name: string;
   due_date: string;
   amount: number | string | null;
+  discount_percent: number | string | null;
+  late_fee_amount: number | string | null;
+  late_fee_type: "fixed" | "percent";
+  late_fee_grace_days: number | string | null;
 }
 
 export const emptyBillForm: BillFormDataProps = {
   name: "",
   due_date: "",
   amount: null,
+  discount_percent: 0,
+  late_fee_amount: 0,
+  late_fee_type: "fixed",
+  late_fee_grace_days: 0,
 };
 
 const errorMessage = (method: string) => {
@@ -119,6 +136,10 @@ export const createBill = async (
       name: formData.name,
       due_date: formData.due_date,
       amount: Number(formData.amount),
+      discount_percent: Number(formData.discount_percent ?? 0),
+      late_fee_amount: Number(formData.late_fee_amount ?? 0),
+      late_fee_type: formData.late_fee_type,
+      late_fee_grace_days: Number(formData.late_fee_grace_days ?? 0),
     },
     timeoutMs,
   );
@@ -129,7 +150,15 @@ export const updateBill = async (
   formData: Partial<BillFormDataProps>,
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
 ) => {
-  const body: { name?: string; due_date?: string; amount?: number } = {};
+  const body: {
+    name?: string;
+    due_date?: string;
+    amount?: number;
+    discount_percent?: number;
+    late_fee_amount?: number;
+    late_fee_type?: "fixed" | "percent";
+    late_fee_grace_days?: number;
+  } = {};
 
   if (formData.name !== undefined) body.name = formData.name;
   if (formData.due_date !== undefined && formData.due_date !== "") {
@@ -137,6 +166,21 @@ export const updateBill = async (
   }
   if (formData.amount !== undefined && formData.amount !== null) {
     body.amount = Number(formData.amount);
+  }
+  if (formData.discount_percent !== undefined && formData.discount_percent !== null) {
+    body.discount_percent = Number(formData.discount_percent);
+  }
+  if (formData.late_fee_amount !== undefined && formData.late_fee_amount !== null) {
+    body.late_fee_amount = Number(formData.late_fee_amount);
+  }
+  if (formData.late_fee_type !== undefined) {
+    body.late_fee_type = formData.late_fee_type;
+  }
+  if (
+    formData.late_fee_grace_days !== undefined &&
+    formData.late_fee_grace_days !== null
+  ) {
+    body.late_fee_grace_days = Number(formData.late_fee_grace_days);
   }
 
   return request("PATCH", `/${billId}`, body, timeoutMs);

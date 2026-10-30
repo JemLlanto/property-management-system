@@ -10,6 +10,8 @@ const {
   enumerateCycles,
   allocatePaymentsToCycles,
   cycleBalance,
+  cyclePrice,
+  lateFeeFor,
   computeBillStanding,
 } = require("../utils/billing");
 
@@ -140,7 +142,7 @@ async function createPayment({
 
   // Work out which cycle this payment settles.
   const cycles = enumerateCycles(bill.due_date, payer.created_at, paidAt);
-  const amountDue = Number(bill.amount);
+  const amountDue = cyclePrice(bill);
   let resolvedCycleIndex = null;
 
   if (cycles.length > 0) {
@@ -259,11 +261,12 @@ async function getBillStandingsForOwner(unit_number, created_at = null, asOf = n
       bill_id: bill.bill_id,
       name: bill.name,
       due_date: bill.due_date,
-      amount: bill.amount,
+      amount: cyclePrice(bill),
       occurrences: standing.occurrences,
       paid_count: standing.paid_count,
       missed_count: standing.missed_count,
       outstanding: standing.outstanding,
+      late_fees: standing.late_fees,
       // When the in-progress cycle becomes due (null if cycles already
       // elapsed, in which case the bill is either missed or settled)
       next_due: next_due ? next_due.toISOString() : null,
@@ -346,10 +349,11 @@ async function getUnpaidBillsOverview() {
         bill_id: bill.bill_id,
         name: bill.name,
         due_date: bill.due_date,
-        amount: bill.amount,
+        amount: cyclePrice(bill),
         paid_count: standing.paid_count,
         missed_count: standing.missed_count,
         outstanding: standing.outstanding,
+        late_fees: standing.late_fees,
       }));
 
     const total_outstanding = unpaid_bills.reduce(
@@ -467,7 +471,7 @@ async function getBillOwnersReport(bill_id) {
     bill_id: bill.bill_id,
     bill_name: bill.name,
     due_date: bill.due_date,
-    amount: bill.amount,
+    amount: cyclePrice(bill),
     owners: rows,
   };
 }

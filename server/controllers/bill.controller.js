@@ -15,9 +15,25 @@ async function getBills(req, res) {
 // Create a bill
 async function createBill(req, res) {
   try {
-    const { name, due_date, amount } = req.body;
+    const {
+      name,
+      due_date,
+      amount,
+      discount_percent,
+      late_fee_amount,
+      late_fee_type,
+      late_fee_grace_days,
+    } = req.body;
 
-    const bill = await Bill.createBill({ name, due_date, amount });
+    const bill = await Bill.createBill({
+      name,
+      due_date,
+      amount,
+      discount_percent,
+      late_fee_amount,
+      late_fee_type,
+      late_fee_grace_days,
+    });
 
     await recordAudit({
       actor: req.user,
@@ -44,11 +60,27 @@ async function createBill(req, res) {
 async function updateBill(req, res) {
   try {
     const { bill_id } = req.params;
-    const { name, due_date, amount } = req.body;
+    const {
+      name,
+      due_date,
+      amount,
+      discount_percent,
+      late_fee_amount,
+      late_fee_type,
+      late_fee_grace_days,
+    } = req.body;
 
     const existing = await Bill.findById(bill_id);
 
-    const bill = await Bill.updateBill(bill_id, { name, due_date, amount });
+    const bill = await Bill.updateBill(bill_id, {
+      name,
+      due_date,
+      amount,
+      discount_percent,
+      late_fee_amount,
+      late_fee_type,
+      late_fee_grace_days,
+    });
 
     await recordAudit({
       actor: req.user,

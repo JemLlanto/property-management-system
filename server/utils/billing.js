@@ -285,6 +285,58 @@ function cycleBalance(amountDue, paid) {
   return Math.max(0, Number(amountDue) - Number(paid ?? 0));
 }
 
+// The amount a single cycle actually costs, after the bill's discount.
+//
+// A bill's `amount` is the list price. `discount_percent` reduces every
+// cycle of that bill by the given percentage, so 10 means 10% off.
+function cyclePrice(bill) {
+  const amount = Number(bill.amount ?? 0);
+  const discount = Number(bill.discount_percent ?? 0);
+
+  if (!discount) return amount;
+
+  const discounted = amount * (1 - discount / 100);
+
+  // Round to centavos — money, not percentages.
+  return Math.round(discounted * 100) / 100;
+}
+
+// The late fee for one missed cycle of a bill.
+//
+// `late_fee_type` is "fixed" (a flat amount) or "percent" (a percentage
+// of the discounted cycle price). `late_fee_grace_days` is the number of
+// days after the cycle deadline during which no fee is charged — a fee
+// only applies once the grace period has elapsed.
+function lateFeeFor(bill, cycleDeadline, asOf = new Date()) {
+  const feeType = bill.late_fee_type === "percent" ? "percent" : "fixed";
+  const graceDays = Number(bill.late_fee_grace_days ?? 0);
+  const rawFee = Number(bill.late_fee_amount ?? 0);
+
+  if (!rawFee || graceDays < 0) return 0;
+
+  // The fee starts once the deadline plus the grace period has passed.
+  const chargeFrom = new Date(cycleDeadline);
+  chargeFrom.setDate(chargeFrom.getDate() + graceDays);
+
+  const endOfChargeDay = new Date(
+    chargeFrom.getFullYear(),
+    chargeFrom.getMonth(),
+    chargeFrom.getDate(),
+    23,
+    59,
+    59,
+    999,
+  );
+
+  if (asOf < endOfChargeDay) return 0;
+
+  if (feeType === "percent") {
+    return Math.round(cyclePrice(bill) * (rawFee / 100) * 100) / 100;
+  }
+
+  return Math.round(rawFee * 100) / 100;
+}
+
 // The standing of one owner on one bill.
 //
 // Cycles are settled by VALUE, not by payment count: a ₱50 payment
@@ -296,26 +348,34 @@ function cycleBalance(amountDue, paid) {
 // elapsed by then are the ones that can be missed. It defaults to now.
 //
 // Returns the number of elapsed cycles, how many of them are fully paid,
-// how many are still owed, the outstanding amount, and any overpayment
-// (money paid beyond what was due).
+// how many are still owed, the outstanding amount (including late fees),
+// and any overpayment (money paid beyond what was due).
 function computeBillStanding({ bill, owner, payments, asOf = new Date() }) {
-  const amountDue = Number(bill.amount ?? 0);
+  const amountDue = cyclePrice(bill);
   const cycles = enumerateCycles(bill.due_date, owner.created_at, asOf);
   const { covered } = allocatePaymentsToCycles(cycles, payments, amountDue);
 
   let paid_count = 0;
   let missed_count = 0;
   let outstanding = 0;
+  let late_fees = 0;
 
   for (const cycle of cycles) {
     const balance = cycleBalance(amountDue, covered.get(cycle.index));
 
     if (balance <= EPSILON) {
       paid_count += 1;
-    } else {
-      missed_count += 1;
-      outstanding += balance;
+      continue;
     }
+
+    missed_count += 1;
+
+    // A late fee is charged per missed cycle, once the grace period has
+    // elapsed. It is added on top of the unpaid cycle amount.
+    const fee = lateFeeFor(bill, cycle.deadline, asOf);
+
+    outstanding += balance + fee;
+    late_fees += fee;
   }
 
   // Money paid beyond what the elapsed cycles required.
@@ -334,6 +394,7 @@ function computeBillStanding({ bill, owner, payments, asOf = new Date() }) {
     paid_count,
     missed_count,
     outstanding: Math.round(outstanding * 100) / 100,
+    late_fees: Math.round(late_fees * 100) / 100,
     overpaid: Math.round(Math.max(0, totalPaid - committed) * 100) / 100,
     cycles,
     covered,
@@ -351,5 +412,7 @@ module.exports = {
   enumerateCycles,
   allocatePaymentsToCycles,
   cycleBalance,
+  cyclePrice,
+  lateFeeFor,
   computeBillStanding,
 };

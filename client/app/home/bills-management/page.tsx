@@ -79,6 +79,10 @@ const BillsManagementPage = () => {
       name: bill.name,
       due_date: bill.due_date ?? "",
       amount: bill.amount,
+      discount_percent: bill.discount_percent ?? 0,
+      late_fee_amount: bill.late_fee_amount ?? 0,
+      late_fee_type: bill.late_fee_type ?? "fixed",
+      late_fee_grace_days: bill.late_fee_grace_days ?? 0,
     });
     setErrors({});
     setIsModalOpen(true);

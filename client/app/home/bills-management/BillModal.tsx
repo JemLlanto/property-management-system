@@ -56,6 +56,24 @@ const BillModal = ({
       newErrors.amount = "Amount must be greater than 0";
     }
 
+    const discount = Number(form.discount_percent ?? 0);
+
+    if (!Number.isFinite(discount) || discount < 0 || discount >= 100) {
+      newErrors.discount_percent = "Discount must be between 0 and 99.99";
+    }
+
+    const lateFee = Number(form.late_fee_amount ?? 0);
+
+    if (!Number.isFinite(lateFee) || lateFee < 0) {
+      newErrors.late_fee_amount = "Late fee cannot be negative";
+    }
+
+    const graceDays = Number(form.late_fee_grace_days ?? 0);
+
+    if (!Number.isInteger(graceDays) || graceDays < 0) {
+      newErrors.late_fee_grace_days = "Grace days must be 0 or more";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -69,6 +87,10 @@ const BillModal = ({
           name: form.name.trim(),
           due_date: form.due_date,
           amount: Number(form.amount),
+          discount_percent: Number(form.discount_percent ?? 0),
+          late_fee_amount: Number(form.late_fee_amount ?? 0),
+          late_fee_type: form.late_fee_type,
+          late_fee_grace_days: Number(form.late_fee_grace_days ?? 0),
         });
 
         if (response.success) {
@@ -87,6 +109,10 @@ const BillModal = ({
           name: form.name.trim(),
           due_date: form.due_date,
           amount: Number(form.amount),
+          discount_percent: Number(form.discount_percent ?? 0),
+          late_fee_amount: Number(form.late_fee_amount ?? 0),
+          late_fee_type: form.late_fee_type,
+          late_fee_grace_days: Number(form.late_fee_grace_days ?? 0),
         });
 
         if (response.success) {
@@ -180,6 +206,129 @@ const BillModal = ({
             {errors.amount && (
               <p className="text-xs text-red-500 mt-1">{errors.amount}</p>
             )}
+          </div>
+
+          {/* Discount — percentage off the list price for every cycle */}
+          <div>
+            <label className="block text-sm font-medium text-neutral-600 mb-1">
+              Discount (%)
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={99.99}
+              step="0.01"
+              value={!form.discount_percent ? "" : form.discount_percent}
+              onChange={(e) =>
+                setForm({ ...form, discount_percent: e.target.value })
+              }
+              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800 ${
+                errors.discount_percent
+                  ? "border-red-400"
+                  : "border-neutral-300"
+              }`}
+              placeholder="0"
+            />
+            {errors.discount_percent && (
+              <p className="text-xs text-red-500 mt-1">
+                {errors.discount_percent}
+              </p>
+            )}
+            {Number(form.discount_percent ?? 0) > 0 && (
+              <p className="text-xs text-neutral-400 mt-1">
+                Every cycle costs{" "}
+                {(
+                  Number(form.amount ?? 0) *
+                  (1 - Number(form.discount_percent) / 100)
+                ).toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+                .
+              </p>
+            )}
+          </div>
+
+          {/* Late fee — charged per missed cycle once the grace period ends */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-neutral-600 mb-1">
+                Late Fee
+              </label>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={!form.late_fee_amount ? "" : form.late_fee_amount}
+                onChange={(e) =>
+                  setForm({ ...form, late_fee_amount: e.target.value })
+                }
+                className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800 ${
+                  errors.late_fee_amount
+                    ? "border-red-400"
+                    : "border-neutral-300"
+                }`}
+                placeholder="0"
+              />
+              {errors.late_fee_amount && (
+                <p className="text-xs text-red-500 mt-1">
+                  {errors.late_fee_amount}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-600 mb-1">
+                Fee Type
+              </label>
+              <select
+                value={form.late_fee_type}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    late_fee_type: e.target.value as "fixed" | "percent",
+                  })
+                }
+                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none bg-white focus:ring-2 focus:ring-neutral-800"
+              >
+                <option value="fixed">Fixed amount</option>
+                <option value="percent">Percent of bill</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Grace period — days after the deadline before the fee applies */}
+          <div>
+            <label className="block text-sm font-medium text-neutral-600 mb-1">
+              Grace Period (days)
+            </label>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={
+                form.late_fee_grace_days === null
+                  ? ""
+                  : form.late_fee_grace_days
+              }
+              onChange={(e) =>
+                setForm({ ...form, late_fee_grace_days: e.target.value })
+              }
+              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800 ${
+                errors.late_fee_grace_days
+                  ? "border-red-400"
+                  : "border-neutral-300"
+              }`}
+              placeholder="0"
+            />
+            {errors.late_fee_grace_days && (
+              <p className="text-xs text-red-500 mt-1">
+                {errors.late_fee_grace_days}
+              </p>
+            )}
+            <p className="text-xs text-neutral-400 mt-1">
+              Days after a cycle deadline before the late fee is charged.
+            </p>
           </div>
         </div>
 
