@@ -4,7 +4,6 @@ import { checkUser } from "@/utils/auth.helper";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import Swal from "sweetalert2";
-import { Search } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setUser } from "@/store/userDataSlice";
 import { setIsLoading } from "@/store/isLoading.slice";
@@ -13,7 +12,6 @@ import {
   BillFormDataProps,
   deleteBill,
   emptyBillForm,
-  getBills,
   getBillsPaginated,
 } from "@/services/bill.service";
 import { BuildingDataProps, getBuildings } from "@/services/building.service";
@@ -159,23 +157,6 @@ const BillsManagementPage = () => {
 
   return (
     <div className="pt-2">
-      {/* Search */}
-      <div className="w-full mx-auto mb-3 max-w-md">
-        <div className="relative">
-          <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
-          />
-          <input
-            type="search"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search bills by name..."
-            className="w-full rounded-lg border border-neutral-300 bg-white pl-9 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800"
-          />
-        </div>
-      </div>
-
       <BillTable
         isLoading={isLoading}
         bills={bills}
@@ -183,6 +164,8 @@ const BillsManagementPage = () => {
         openEditModal={openEditModal}
         handleDelete={handleDelete}
         openDetailsModal={openDetailsModal}
+        searchInput={searchInput}
+        setSearchInput={setSearchInput}
       />
 
       {/* Pagination */}

@@ -4,7 +4,7 @@ import { PaymentDataProps } from "@/services/payment.service";
 import { BuildingDataProps } from "@/services/building.service";
 import { UserDataProps } from "@/services/user.service";
 import { formatDate } from "@/utils/date.helper";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Search, Trash2 } from "lucide-react";
 
 interface TableProps {
   isLoading: boolean;
@@ -13,6 +13,9 @@ interface TableProps {
   unitOwners: UserDataProps[];
   openAddModal: () => void;
   handleDelete: (payment: PaymentDataProps) => void;
+  // Search box lives in the table header
+  searchInput: string;
+  setSearchInput: (value: string) => void;
 }
 
 const PaymentTable = ({
@@ -22,6 +25,8 @@ const PaymentTable = ({
   unitOwners,
   openAddModal,
   handleDelete,
+  searchInput,
+  setSearchInput,
 }: TableProps) => {
   // Payments store the payer's unit number — look the owner up to show
   // their building and name.
@@ -35,18 +40,36 @@ const PaymentTable = ({
 
   return (
     <div className="w-full mx-auto p-5 bg-white border border-gray-200 rounded-xl shadow-sm font-sans">
-      {/* Header with Add button */}
-      <div className="flex items-center justify-between mb-4">
+      {/* Header with search and Add button */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h3 className="text-lg font-semibold text-neutral-800">
           Payment History
         </h3>
-        <button
-          onClick={openAddModal}
-          className="flex items-center gap-1.5 rounded-lg bg-neutral-900 text-white text-sm font-medium px-3.5 py-2 hover:bg-neutral-700 transition-colors"
-        >
-          <Plus size={16} />
-          Record Payment
-        </button>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64 sm:flex-none">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+            />
+            <input
+              type="search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search unit, bill or recorder..."
+              aria-label="Search payments"
+              className="w-full rounded-lg border border-neutral-300 bg-white pl-9 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800"
+            />
+          </div>
+
+          <button
+            onClick={openAddModal}
+            className="flex items-center gap-1.5 rounded-lg bg-neutral-900 text-white text-sm font-medium px-3.5 py-2 hover:bg-neutral-700 transition-colors shrink-0"
+          >
+            <Plus size={16} />
+            Record Payment
+          </button>
+        </div>
       </div>
 
       {/* Table header */}
