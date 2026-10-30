@@ -11,10 +11,7 @@ import {
   getDashboard,
   RangePreset,
 } from "@/services/dashboard.service";
-import {
-  getReminders,
-  OwnerReminderProps,
-} from "@/services/reminder.service";
+import { getReminders, OwnerReminderProps } from "@/services/reminder.service";
 import {
   formatCurrency,
   formatPercent,

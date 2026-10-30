@@ -8,30 +8,16 @@ import Link from "next/link";
 const SideBar = () => {
   const router = useRouter();
   const pathname = usePathname();
-  const userData = useAppSelector((state) => state.userData);
-  const isLoading = useAppSelector((state) => state.loading.isLoading);
 
   const navLinks = [
     { name: "Dashboard", href: "/home" },
-    { name: "Settings", href: "/home/settings" },
+    { name: "Payments", href: "/home/payments" },
     { name: "User Management", href: "/home/user-management" },
     { name: "Building Management", href: "/home/building-management" },
     { name: "Bills Management", href: "/home/bills-management" },
-    { name: "Payments", href: "/home/payments" },
-    { name: "Line Items", href: "/home/line-items" },
+    { name: "Settings", href: "/home/settings" },
   ];
 
-  const handleLogout = async () => {
-    try {
-      const response = await logout();
-
-      if (response.success) {
-        router.push("/");
-      }
-    } catch (err) {
-      console.error("Unexpected error occured.");
-    }
-  };
   return (
     <>
       <nav className="h-full w-70 bg-cyan-400">
