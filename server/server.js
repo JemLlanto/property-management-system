@@ -12,6 +12,7 @@ const billRoutes = require("./routes/bill.route");
 const paymentRoutes = require("./routes/payment.route");
 const dashboardRoutes = require("./routes/dashboard.route");
 const auditRoutes = require("./routes/audit.route");
+const reminderRoutes = require("./routes/reminder.route");
 const { requireAuth } = require("./middleware/auth.middleware");
 const { testConnection } = require("./lib/prisma");
 
@@ -35,6 +36,7 @@ app.use("/api/bills", billRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/audit", auditRoutes);
+app.use("/api/reminders", reminderRoutes);
 
 // Example protected route
 app.get("/api/protected", requireAuth, (req, res) => {

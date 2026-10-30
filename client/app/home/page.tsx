@@ -12,6 +12,10 @@ import {
   RangePreset,
 } from "@/services/dashboard.service";
 import {
+  getReminders,
+  OwnerReminderProps,
+} from "@/services/reminder.service";
+import {
   formatCurrency,
   formatPercent,
   startOfRange,
@@ -24,6 +28,7 @@ import DateRangePicker from "./_components/DateRangePicker";
 import ExportButton from "./_components/ExportButton";
 import MetricCard from "./_components/MetricCard";
 import OccupancyCard from "./_components/OccupancyCard";
+import RemindersPanel from "./_components/RemindersPanel";
 import RevenueChart from "./_components/RevenueChart";
 
 // Days covered by each quick preset
@@ -68,6 +73,7 @@ const DashboardPage = () => {
   const dispatch = useAppDispatch();
 
   const [data, setData] = useState<DashboardProps>(EMPTY_DASHBOARD);
+  const [reminders, setReminders] = useState<OwnerReminderProps[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [preset, setPreset] = useState<RangePreset | "CUSTOM">("30D");
   const [from, setFrom] = useState(startOfRange(30));
@@ -77,10 +83,17 @@ const DashboardPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await getDashboard(nextFrom, nextTo);
+      const [response, reminderRes] = await Promise.all([
+        getDashboard(nextFrom, nextTo),
+        getReminders(7),
+      ]);
 
       if (response.success) {
         setData({ ...EMPTY_DASHBOARD, ...response });
+      }
+
+      if (reminderRes.success) {
+        setReminders(reminderRes.reminders);
       }
     } catch (err) {
       console.error("Error loading dashboard: ", err);
@@ -270,6 +283,15 @@ const DashboardPage = () => {
           isLoading={isLoading}
           emptyText="No payments were recorded in this period."
         />
+        <BreakdownList
+          title="Top Payers"
+          data={topPayers.map((payer) => ({
+            name: `${payer.rank}. ${payer.name}`,
+            amount: payer.amount,
+          }))}
+          isLoading={isLoading}
+          emptyText="No payments were recorded in this period."
+        />
       </div>
 
       {/* Arrears */}
@@ -284,22 +306,14 @@ const DashboardPage = () => {
         />
       </div>
 
-      {/* Activity */}
+      {/* Activity + reminders */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <ActivityPanel
           upcomingDues={data.upcoming_dues}
           recentPayments={data.recent_payments}
           isLoading={isLoading}
         />
-        <BreakdownList
-          title="Top Payers"
-          data={topPayers.map((payer) => ({
-            name: `${payer.rank}. ${payer.name}`,
-            amount: payer.amount,
-          }))}
-          isLoading={isLoading}
-          emptyText="No payments were recorded in this period."
-        />
+        <RemindersPanel reminders={reminders} isLoading={isLoading} />
       </div>
     </div>
   );
