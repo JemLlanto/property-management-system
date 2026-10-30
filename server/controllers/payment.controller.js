@@ -59,7 +59,8 @@ async function deletePayment(req, res) {
   }
 }
 
-// Unpaid bills for a single unit owner (used by the user details modal)
+// Bill standings for a single unit owner (used by the user details modal):
+// missed bills plus incoming bills whose cycle has not completed yet
 async function getUnpaidBills(req, res) {
   try {
     const { user_id } = req.params;
@@ -73,16 +74,16 @@ async function getUnpaidBills(req, res) {
     }
 
     if (!owner.unit_number) {
-      return res.json({ success: true, unpaid_bills: [] });
+      return res.json({ success: true, unpaid_bills: [], incoming_bills: [] });
     }
 
     // Payments are matched by unit number
-    const unpaid_bills = await Payment.getUnpaidBillsForOwner(
-      owner.unit_number,
-      owner.created_at,
-    );
+    const [unpaid_bills, incoming_bills] = await Promise.all([
+      Payment.getUnpaidBillsForOwner(owner.unit_number, owner.created_at),
+      Payment.getIncomingBillsForOwner(owner.unit_number, owner.created_at),
+    ]);
 
-    return res.json({ success: true, unpaid_bills });
+    return res.json({ success: true, unpaid_bills, incoming_bills });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
   }

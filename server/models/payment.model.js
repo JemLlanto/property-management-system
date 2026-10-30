@@ -116,11 +116,10 @@ async function deletePayment(payment_id) {
   return payment;
 }
 
-// Bills the owner has not fully paid since their account was created.
-// Uses the same per-cycle rule as the bill details modal: a bill is unpaid
-// when the owner has fewer payments than the number of cycle occurrences
-// that elapsed since their created_at. Payments are matched by unit number.
-async function getUnpaidBillsForOwner(unit_number, created_at = null) {
+// Full bill standing for an owner: every bill with how many cycles are
+// completed, missed, and when the next payment becomes due. Payments are
+// matched by unit number.
+async function getBillStandingsForOwner(unit_number, created_at = null) {
   const paidAfter = created_at ? new Date(created_at) : null;
 
   const payments = await prisma.payment.findMany({
@@ -141,22 +140,47 @@ async function getUnpaidBillsForOwner(unit_number, created_at = null) {
     orderBy: { bill_id: "desc" },
   });
 
-  return bills
-    .map((bill) => {
-      const occurrences = countOccurrences(bill.due_date, created_at);
-      const paid = paidCounts.get(bill.bill_id) ?? 0;
+  return bills.map((bill) => {
+    const occurrences = countOccurrences(bill.due_date, created_at);
+    const paid = paidCounts.get(bill.bill_id) ?? 0;
 
-      return {
-        bill_id: bill.bill_id,
-        name: bill.name,
-        due_date: bill.due_date,
-        amount: bill.amount,
-        occurrences,
-        paid_count: Math.min(paid, occurrences),
-        missed_count: Math.max(0, occurrences - paid),
-      };
-    })
-    .filter((bill) => bill.missed_count > 0);
+    // The next cycle completes this many days from the account creation,
+    // based on the bill's cycle length.
+    const next_due =
+      occurrences === 0 ? getNextDueDate(bill.due_date, created_at) : null;
+
+    return {
+      bill_id: bill.bill_id,
+      name: bill.name,
+      due_date: bill.due_date,
+      amount: bill.amount,
+      occurrences,
+      paid_count: Math.min(paid, occurrences),
+      missed_count: Math.max(0, occurrences - paid),
+      // When the in-progress cycle becomes due (null if cycles already
+      // elapsed, in which case the bill is either missed or settled)
+      next_due: next_due ? next_due.toISOString() : null,
+      status: occurrences - paid > 0 ? "missed" : "on_track",
+    };
+  });
+}
+
+// Bills the owner has not fully paid since their account was created.
+// Uses the same per-cycle rule as the bill details modal: a bill is unpaid
+// when the owner has fewer payments than the number of cycle occurrences
+// that elapsed since their created_at. Payments are matched by unit number.
+async function getUnpaidBillsForOwner(unit_number, created_at = null) {
+  const standings = await getBillStandingsForOwner(unit_number, created_at);
+
+  return standings.filter((bill) => bill.missed_count > 0);
+}
+
+// Bills that are not missed yet — the cycle is still running. Shown as
+// "incoming" so owners see what is coming up rather than an empty state.
+async function getIncomingBillsForOwner(unit_number, created_at = null) {
+  const standings = await getBillStandingsForOwner(unit_number, created_at);
+
+  return standings.filter((bill) => bill.missed_count === 0);
 }
 
 // Every unit owner together with the bills they have not paid.
@@ -245,9 +269,138 @@ async function getUnpaidBillsOverview() {
   });
 }
 
-// Number of billing cycles that elapsed between two dates.
-// The starting cycle counts as occurrence 1, so a monthly bill created
-// in June has occurrences 1 in June, 2 in July, ... 6 in November.
+// Billing cycles are anchored to calendar deadlines rather than to the
+// account creation date:
+//   Weekly     → every Sunday
+//   Half-Month → the 15th and the last day of the month
+//   Monthly    → the last day of the month
+//   Quarterly  → Mar 31, Jun 30, Sep 30, Dec 31
+// The partial period containing the account creation date does NOT count —
+// the first deadline is the end of the owner's first FULL period.
+// E.g. created Thu Oct 29 → first weekly deadline Sun Nov 8 (the week Oct
+// 29–Nov 1 is partial), first monthly deadline Nov 30 (October is partial).
+
+// The last day of the given month (month is 0-based, like Date)
+function endOfMonth(year, month) {
+  return new Date(year, month + 1, 0, 23, 59, 59, 999);
+}
+
+// The first deadline for an owner created at the given date — the end of
+// their first full billing period.
+function getFirstDeadline(cycle, created) {
+  const day = created.getDate();
+  const month = created.getMonth();
+  const year = created.getFullYear();
+  const dow = created.getDay(); // 0 = Sunday
+
+  switch (cycle) {
+    case "Weekly": {
+      // The week containing the creation date is partial unless the owner
+      // was created on a Sunday. The deadline is the following Sunday.
+      const daysToNextSunday = dow === 0 ? 7 : 7 - dow;
+      return new Date(year, month, day + daysToNextSunday + 7, 23, 59, 59, 999);
+    }
+    case "Half-Month": {
+      // Periods run 1–15 and 16–end of month.
+      if (day === 1) return new Date(year, month, 15, 23, 59, 59, 999);
+      if (day <= 15) return endOfMonth(year, month);
+      if (day === 16) return endOfMonth(year, month);
+      return new Date(year, month + 1, 15, 23, 59, 59, 999);
+    }
+    case "Monthly": {
+      // The creation month is partial unless created on the 1st.
+      if (day === 1) return endOfMonth(year, month);
+      return endOfMonth(year, month + 1);
+    }
+    case "Quarterly": {
+      // Quarters end Mar 31, Jun 30, Sep 30, Dec 31.
+      const quarterEnd = Math.floor(month / 3) * 3 + 2;
+      // Created on the first day of a quarter → that quarter ends first
+      if (day === 1 && month === quarterEnd - 2) {
+        return endOfMonth(year, quarterEnd);
+      }
+      // Otherwise the next quarter end comes first
+      const nextQuarterEnd = quarterEnd + 3;
+      return endOfMonth(
+        nextQuarterEnd > 11 ? year + 1 : year,
+        (nextQuarterEnd % 12 + 12) % 12,
+      );
+    }
+    default:
+      return endOfMonth(year, month + 1);
+  }
+}
+
+// The deadline that follows the given one for the cycle
+function getNextDeadline(cycle, deadline) {
+  const y = deadline.getFullYear();
+  const m = deadline.getMonth();
+  const d = deadline.getDate();
+
+  switch (cycle) {
+    case "Weekly": {
+      const next = new Date(deadline);
+      next.setDate(next.getDate() + 7);
+      return next;
+    }
+    case "Half-Month": {
+      // 15th ↔ end of month
+      if (d === 15) return endOfMonth(y, m);
+      return new Date(y, m + 1, 15, 23, 59, 59, 999);
+    }
+    case "Monthly":
+      return endOfMonth(y, m + 1);
+    case "Quarterly": {
+      // Step to the next quarter end (Mar/Jun/Sep/Dec last day)
+      const quarterEnds = [2, 5, 8, 11]; // 0-based months
+      const idx = quarterEnds.indexOf(m);
+
+      if (idx === -1 || idx === 3) {
+        return endOfMonth(y + 1, 2);
+      }
+      return endOfMonth(y, quarterEnds[idx + 1]);
+    }
+    default:
+      return endOfMonth(y, m + 1);
+  }
+}
+
+// When the currently running cycle completes — the first deadline still in
+// the future. If today is the deadline, that date is returned (due today).
+function getNextDueDate(cycle, created) {
+  const start = created ? new Date(created) : null;
+
+  if (!start || Number.isNaN(start.getTime())) {
+    return null;
+  }
+
+  let deadline = getFirstDeadline(cycle, start);
+  const now = new Date();
+  const nowEnd = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    23,
+    59,
+    59,
+    999,
+  );
+
+  for (let i = 0; i < 600 && deadline; i += 1) {
+    if (deadline >= nowEnd) {
+      return deadline;
+    }
+    deadline = getNextDeadline(cycle, deadline);
+  }
+
+  return null;
+}
+
+// Number of billing cycles that have fully elapsed between two dates.
+// A cycle only counts once its deadline DATE has been reached — the cycle
+// currently in progress is not due yet, so it cannot be missed. E.g. a
+// weekly bill for an account created Thu Oct 29 has 0 occurrences on Oct
+// 30; the first deadline is Sunday Nov 8, and it counts on Nov 8 itself.
 function countOccurrences(cycle, fromDate, toDate = new Date()) {
   const start = fromDate ? new Date(fromDate) : null;
 
@@ -260,42 +413,30 @@ function countOccurrences(cycle, fromDate, toDate = new Date()) {
       ? new Date(toDate)
       : new Date();
 
-  if (end < start) {
-    return 0;
-  }
-
-  const startDay = new Date(
-    start.getFullYear(),
-    start.getMonth(),
-    start.getDate(),
-  );
-  const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-  const dayDiff = Math.floor(
-    (endDay.getTime() - startDay.getTime()) / (24 * 60 * 60 * 1000),
+  // Compare by calendar date: the deadline counts on its own day
+  const endDate = new Date(
+    end.getFullYear(),
+    end.getMonth(),
+    end.getDate(),
+    23,
+    59,
+    59,
+    999,
   );
 
-  switch (cycle) {
-    case "Weekly":
-      // A partial week still counts as an occurrence of its own
-      return 1 + Math.floor((dayDiff + 6) / 7);
-    case "Half-Month":
-      return 1 + Math.floor((dayDiff + 14) / 15);
-    case "Monthly": {
-      const months =
-        (endDay.getFullYear() - startDay.getFullYear()) * 12 +
-        (endDay.getMonth() - startDay.getMonth());
-      return 1 + Math.max(0, months);
+  let deadline = getFirstDeadline(cycle, start);
+  let count = 0;
+
+  for (let i = 0; i < 600 && deadline; i += 1) {
+    if (deadline > endDate) {
+      break;
     }
-    case "Quarterly": {
-      const months =
-        (endDay.getFullYear() - startDay.getFullYear()) * 12 +
-        (endDay.getMonth() - startDay.getMonth());
-      return 1 + Math.max(0, Math.floor(months / 3));
-    }
-    default:
-      // Unknown cycle — fall back to a single occurrence
-      return 1;
+
+    count += 1;
+    deadline = getNextDeadline(cycle, deadline);
   }
+
+  return count;
 }
 
 // Per-bill breakdown for every unit owner: how many cycles have elapsed
@@ -396,7 +537,10 @@ module.exports = {
   deletePayment,
   parsePayment,
   getUnpaidBillsForOwner,
+  getBillStandingsForOwner,
+  getIncomingBillsForOwner,
   getUnpaidBillsOverview,
   getBillOwnersReport,
   countOccurrences,
+  getNextDueDate,
 };

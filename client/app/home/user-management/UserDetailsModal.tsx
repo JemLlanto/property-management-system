@@ -2,12 +2,17 @@
 
 import { UserDataProps } from "@/services/user.service";
 import { BuildingDataProps } from "@/services/building.service";
-import { getUnpaidBills, UnpaidBillProps } from "@/services/payment.service";
+import {
+  getUnpaidBills,
+  IncomingBillProps,
+  UnpaidBillProps,
+} from "@/services/payment.service";
 import { formatDate } from "@/utils/date.helper";
 import {
   AlertTriangle,
   Building,
   CalendarDays,
+  CalendarClock,
   CheckCircle2,
   Hash,
   Mail,
@@ -26,10 +31,11 @@ interface ModalProps {
 
 const UserDetailsModal = ({ user, buildings, onClose, onEdit }: ModalProps) => {
   const [unpaidBills, setUnpaidBills] = useState<UnpaidBillProps[]>([]);
+  const [incomingBills, setIncomingBills] = useState<IncomingBillProps[]>([]);
   const [isLoadingBills, setIsLoadingBills] = useState(false);
 
-  // Load unpaid bills for Unit Owners — a bill is unpaid when the owner has
-  // no payment for it since their account was created.
+  // Load bill standings for Unit Owners — missed bills plus the incoming
+  // ones whose cycle has not completed yet.
   useEffect(() => {
     if (user.type !== "Unit Owner") return;
 
@@ -43,6 +49,7 @@ const UserDetailsModal = ({ user, buildings, onClose, onEdit }: ModalProps) => {
 
         if (!cancelled) {
           setUnpaidBills(response.unpaid_bills ?? []);
+          setIncomingBills(response.incoming_bills ?? []);
         }
       } catch (err) {
         console.error("Error loading unpaid bills: ", err);
@@ -192,7 +199,7 @@ const UserDetailsModal = ({ user, buildings, onClose, onEdit }: ModalProps) => {
               <div className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2">
                 <CheckCircle2 size={16} className="text-green-600 shrink-0" />
                 <p className="text-sm text-green-700">
-                  All bills are paid. No outstanding balance.
+                  No missed payments. All bills are on track.
                 </p>
               </div>
             ) : (
@@ -245,6 +252,64 @@ const UserDetailsModal = ({ user, buildings, onClose, onEdit }: ModalProps) => {
                         maximumFractionDigits: 2,
                       })}
                   </span>
+                </div>
+              </div>
+            )}
+
+            {/* Incoming bills — cycles that have not completed yet */}
+            {incomingBills.length > 0 && (
+              <div className="mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold text-neutral-800">
+                    Incoming Bills
+                  </h4>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                    <CalendarClock size={12} />
+                    {incomingBills.length} upcoming
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  {incomingBills.map((bill) => (
+                    <div
+                      key={bill.bill_id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-blue-100 px-3 py-2 bg-blue-50/50"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-neutral-800 truncate">
+                          {bill.name}
+                        </p>
+                        <p className="text-xs text-neutral-500">
+                          {bill.due_date} cycle
+                          {bill.next_due
+                            ? ` · Due ${formatDate(bill.next_due)}`
+                            : ""}
+                        </p>
+                      </div>
+                      <p className="text-sm font-semibold text-neutral-800 shrink-0">
+                        ₱
+                        {Number(bill.amount).toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </p>
+                    </div>
+                  ))}
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide">
+                      Upcoming Total
+                    </span>
+                    <span className="text-sm font-semibold text-blue-600">
+                      ₱
+                      {incomingBills
+                        .reduce((sum, bill) => sum + Number(bill.amount), 0)
+                        .toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                    </span>
+                  </div>
                 </div>
               </div>
             )}

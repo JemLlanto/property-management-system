@@ -50,6 +50,20 @@ export interface UnpaidBillProps {
   missed_count: number;
 }
 
+// A bill whose current cycle has not completed yet — nothing is missed,
+// the next payment just is not due yet
+export interface IncomingBillProps {
+  bill_id: number;
+  name: string;
+  due_date: string;
+  amount: number;
+  occurrences: number;
+  paid_count: number;
+  missed_count: number;
+  // ISO date when the running cycle completes and payment becomes due
+  next_due: string | null;
+}
+
 // Unit owner with their unpaid bills (used by the user details modal)
 export interface OwnerUnpaidBillsProps {
   user_id: string;
@@ -152,7 +166,7 @@ export const getPayments = async (timeoutMs: number = DEFAULT_TIMEOUT_MS) => {
   return { success: result.success, payments: result.payments ?? [] };
 };
 
-// Unpaid bills for a single unit owner
+// Bill standings for a single unit owner: missed plus incoming bills
 export const getUnpaidBills = async (
   userId: string,
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
@@ -167,6 +181,7 @@ export const getUnpaidBills = async (
   return {
     success: result.success,
     unpaid_bills: (result.unpaid_bills ?? []) as UnpaidBillProps[],
+    incoming_bills: (result.incoming_bills ?? []) as IncomingBillProps[],
   };
 };
 
