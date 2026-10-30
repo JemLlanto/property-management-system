@@ -12,13 +12,13 @@ const SideBar = () => {
   const isLoading = useAppSelector((state) => state.loading.isLoading);
 
   const navLinks = [
-    { name: "Home", href: "/home" },
-    { name: "Dashboard", href: "/home/dashboard" },
+    { name: "Dashboard", href: "/home" },
     { name: "Settings", href: "/home/settings" },
     { name: "User Management", href: "/home/user-management" },
     { name: "Building Management", href: "/home/building-management" },
     { name: "Bills Management", href: "/home/bills-management" },
     { name: "Payments", href: "/home/payments" },
+    { name: "Line Items", href: "/home/line-items" },
   ];
 
   const handleLogout = async () => {

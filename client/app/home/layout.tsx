@@ -13,7 +13,7 @@ interface Props {
 // string title here would wipe the template for those descendants.
 export const metadata: Metadata = {
   title: {
-    default: "Home",
+    default: "Dashboard",
     template: "%s | Property Management System",
   },
   description: "Property Management System",

@@ -11,9 +11,8 @@ const NavBar = () => {
   const userData = useAppSelector((state) => state.userData);
 
   const navLinks = [
-    { name: "Home", href: "/home" },
-    { name: "Dashboard", href: "/dashboard" },
-    { name: "Settings", href: "/settings" },
+    { name: "Dashboard", href: "/home" },
+    { name: "Settings", href: "/home/settings" },
   ];
 
   const handleLogout = async () => {
