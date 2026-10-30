@@ -15,6 +15,7 @@ import {
   UserFormDataProps,
 } from "@/services/user.service";
 import { BuildingDataProps, getBuildings } from "@/services/building.service";
+import { useSortableColumns } from "@/hooks/useSortableColumns";
 import AddUserModal from "./AddUserModal";
 import UserDetailsModal from "./UserDetailsModal";
 import UserTable from "./UserTable";
@@ -44,14 +45,33 @@ const UserManagementPage = () => {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
+  // Column sorting — clicking a header cycles asc → desc → default
+  const sortable = useSortableColumns();
+
+  // Sorting changes the row order, so go back to the first page. Both
+  // state updates happen in the same handler, so the page and the sort
+  // reach the fetch together in one request.
+  const handleSort = useCallback(
+    (column: string) => {
+      sortable.toggleSort(column);
+      setPage(1);
+    },
+    [sortable],
+  );
+
   // Load one page of users, with the current search term
   const loadUsers = useCallback(async () => {
-    const result = await getUsersPaginated({ page, pageSize, search });
+    const result = await getUsersPaginated({
+      page,
+      pageSize,
+      search,
+      ...sortable.sortParams,
+    });
 
     setUsers(result.users);
     setTotal(result.total);
     setTotalPages(result.total_pages);
-  }, [page, pageSize, search]);
+  }, [page, pageSize, search, sortable.sortParams]);
 
   // Checking user authorization and loading the user list
   useEffect(() => {
@@ -187,6 +207,7 @@ const UserManagementPage = () => {
         openDetailsModal={openDetailsModal}
         searchInput={searchInput}
         setSearchInput={setSearchInput}
+        sortable={{ ...sortable, toggleSort: handleSort }}
       />
 
       {/* Pagination */}

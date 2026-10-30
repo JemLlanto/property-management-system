@@ -15,6 +15,7 @@ import {
   getBillsPaginated,
 } from "@/services/bill.service";
 import { BuildingDataProps, getBuildings } from "@/services/building.service";
+import { useSortableColumns } from "@/hooks/useSortableColumns";
 import BillDetailsModal from "./BillDetailsModal";
 import BillModal from "./BillModal";
 import BillTable from "./BillTable";
@@ -40,13 +41,32 @@ const BillsManagementPage = () => {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
+  // Column sorting — clicking a header cycles asc → desc → default
+  const sortable = useSortableColumns();
+
+  // Sorting changes the row order, so go back to the first page. Both
+  // state updates happen in the same handler, so the page and the sort
+  // reach the fetch together in one request.
+  const handleSort = useCallback(
+    (column: string) => {
+      sortable.toggleSort(column);
+      setPage(1);
+    },
+    [sortable],
+  );
+
   const loadBills = useCallback(async () => {
-    const result = await getBillsPaginated({ page, pageSize, search });
+    const result = await getBillsPaginated({
+      page,
+      pageSize,
+      search,
+      ...sortable.sortParams,
+    });
 
     setBills(result.bills);
     setTotal(result.total);
     setTotalPages(result.total_pages);
-  }, [page, pageSize, search]);
+  }, [page, pageSize, search, sortable.sortParams]);
 
   // Checking user authorization and loading the bill list
   useEffect(() => {
@@ -166,6 +186,7 @@ const BillsManagementPage = () => {
         openDetailsModal={openDetailsModal}
         searchInput={searchInput}
         setSearchInput={setSearchInput}
+        sortable={{ ...sortable, toggleSort: handleSort }}
       />
 
       {/* Pagination */}

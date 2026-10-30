@@ -58,6 +58,45 @@ async function paginate(query, countQuery) {
   };
 }
 
+// Build a Prisma `orderBy` from a client-supplied column and direction.
+//
+// The column MUST be in the `allowed` map — an unrecognised column falls
+// back to the default sort instead of reaching Prisma. That keeps a
+// typo or a crafted parameter from ever turning into an arbitrary query.
+//
+// `allowed` maps the public column key to either:
+//   - a string   → a scalar field on the model, e.g. { email: "email" }
+//   - an object  → a to-one relation, e.g. { bill_name: { relation: "bill", field: "name" } }
+//
+// `tiebreaker` is appended to every sort. Without it, rows with equal
+// sort values can come back in a different order on each page, which
+// makes a row appear on two pages or on none.
+function buildSortOrder(sort, order, allowed, { fallback = [], tiebreaker } = {}) {
+  const direction = String(order).toLowerCase() === "asc" ? "asc" : "desc";
+
+  const key = String(sort ?? "").trim();
+  const entry = allowed[key];
+
+  let orderBy = [];
+
+  if (entry) {
+    if (typeof entry === "string") {
+      orderBy = [{ [entry]: direction }];
+    } else {
+      orderBy = [{ [entry.relation]: { [entry.field]: direction } }];
+    }
+  } else {
+    orderBy = [...fallback];
+  }
+
+  if (tiebreaker) {
+    const [field, tieDirection] = Object.entries(tiebreaker)[0];
+    orderBy.push({ [field]: tieDirection ?? "asc" });
+  }
+
+  return orderBy;
+}
+
 // The standard pagination envelope returned to the client.
 function paginationMeta({ page, pageSize, total }) {
   return {
@@ -74,6 +113,7 @@ module.exports = {
   MAX_PAGE_SIZE,
   parsePagination,
   buildSearchWhere,
+  buildSortOrder,
   paginate,
   paginationMeta,
 };

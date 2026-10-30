@@ -26,7 +26,8 @@ async function getUsers(req, res) {
     const supportsPagination =
       req.query.page !== undefined ||
       req.query.search !== undefined ||
-      req.query.type !== undefined;
+      req.query.type !== undefined ||
+      req.query.sort !== undefined;
 
     if (!supportsPagination) {
       const users = await User.getAllUsers();
@@ -43,6 +44,8 @@ async function getUsers(req, res) {
       take,
       search: req.query.search,
       type: req.query.type,
+      sort: req.query.sort,
+      order: req.query.order,
     });
 
     return res.json({

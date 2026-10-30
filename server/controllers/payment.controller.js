@@ -12,7 +12,8 @@ async function getPayments(req, res) {
       req.query.search !== undefined ||
       req.query.bill_id !== undefined ||
       req.query.from !== undefined ||
-      req.query.to !== undefined;
+      req.query.to !== undefined ||
+      req.query.sort !== undefined;
 
     if (!supportsPagination) {
       const payments = await Payment.getAllPayments();
@@ -34,6 +35,8 @@ async function getPayments(req, res) {
       bill_id: req.query.bill_id,
       from: req.query.from,
       to: req.query.to,
+      sort: req.query.sort,
+      order: req.query.order,
     });
 
     return res.json({

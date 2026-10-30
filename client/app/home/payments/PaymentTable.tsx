@@ -5,6 +5,8 @@ import { BuildingDataProps } from "@/services/building.service";
 import { UserDataProps } from "@/services/user.service";
 import { formatDate } from "@/utils/date.helper";
 import { Plus, Search, Trash2 } from "lucide-react";
+import { UseSortableColumnsResult } from "@/hooks/useSortableColumns";
+import SortableHeader from "../_components/SortableHeader";
 
 interface TableProps {
   isLoading: boolean;
@@ -16,6 +18,8 @@ interface TableProps {
   // Search box lives in the table header
   searchInput: string;
   setSearchInput: (value: string) => void;
+  // Column sorting lives in the table headers
+  sortable: UseSortableColumnsResult;
 }
 
 const PaymentTable = ({
@@ -27,6 +31,7 @@ const PaymentTable = ({
   handleDelete,
   searchInput,
   setSearchInput,
+  sortable,
 }: TableProps) => {
   // Payments store the payer's unit number — look the owner up to show
   // their building and name.
@@ -74,24 +79,46 @@ const PaymentTable = ({
 
       {/* Table header */}
       <div className="grid grid-cols-[1fr_2fr_1.5fr_1fr_1.5fr_1fr_auto] gap-2 border-b border-neutral-300 pb-2 px-2">
-        <h5 className="text-left font-semibold text-sm text-neutral-500 uppercase tracking-wide">
-          Unit No.
-        </h5>
-        <h5 className="text-left font-semibold text-sm text-neutral-500 uppercase tracking-wide">
-          For
-        </h5>
+        <SortableHeader
+          label="Unit No."
+          column="unit_number"
+          active={sortable.isSorted("unit_number")}
+          direction={sortable.sort.direction}
+          onSort={sortable.toggleSort}
+        />
+        <SortableHeader
+          label="For"
+          column="bill_name"
+          active={sortable.isSorted("bill_name")}
+          direction={sortable.sort.direction}
+          onSort={sortable.toggleSort}
+        />
         <h5 className="text-left font-semibold text-sm text-neutral-500 uppercase tracking-wide">
           Building
         </h5>
-        <h5 className="text-center font-semibold text-sm text-neutral-500 uppercase tracking-wide">
-          Amount
-        </h5>
-        <h5 className="text-left font-semibold text-sm text-neutral-500 uppercase tracking-wide">
-          Recorded By
-        </h5>
-        <h5 className="text-center font-semibold text-sm text-neutral-500 uppercase tracking-wide">
-          Paid At
-        </h5>
+        <SortableHeader
+          label="Amount"
+          column="amount"
+          active={sortable.isSorted("amount")}
+          direction={sortable.sort.direction}
+          onSort={sortable.toggleSort}
+          align="center"
+        />
+        <SortableHeader
+          label="Recorded By"
+          column="recorded_by_name"
+          active={sortable.isSorted("recorded_by_name")}
+          direction={sortable.sort.direction}
+          onSort={sortable.toggleSort}
+        />
+        <SortableHeader
+          label="Paid At"
+          column="paid_at"
+          active={sortable.isSorted("paid_at")}
+          direction={sortable.sort.direction}
+          onSort={sortable.toggleSort}
+          align="center"
+        />
         <h5 className="text-right font-semibold text-sm text-neutral-500 uppercase tracking-wide w-20">
           Actions
         </h5>

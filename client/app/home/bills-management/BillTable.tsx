@@ -2,6 +2,8 @@
 
 import { BillDataProps } from "@/services/bill.service";
 import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { UseSortableColumnsResult } from "@/hooks/useSortableColumns";
+import SortableHeader from "../_components/SortableHeader";
 
 interface TableProps {
   isLoading: boolean;
@@ -13,6 +15,8 @@ interface TableProps {
   // Search box lives in the table header
   searchInput: string;
   setSearchInput: (value: string) => void;
+  // Column sorting lives in the table headers
+  sortable: UseSortableColumnsResult;
 }
 
 const BillTable = ({
@@ -24,6 +28,7 @@ const BillTable = ({
   openDetailsModal,
   searchInput,
   setSearchInput,
+  sortable,
 }: TableProps) => {
   return (
     <div className="w-full mx-auto p-5 bg-white border border-gray-200 rounded-xl shadow-sm font-sans">
@@ -59,15 +64,29 @@ const BillTable = ({
 
       {/* Table header */}
       <div className="grid grid-cols-[2fr_1fr_1fr_auto] gap-2 border-b border-neutral-300 pb-2 px-2">
-        <h5 className="text-left font-semibold text-sm text-neutral-500 uppercase tracking-wide">
-          Bill Name
-        </h5>
-        <h5 className="text-center font-semibold text-sm text-neutral-500 uppercase tracking-wide">
-          Due Date
-        </h5>
-        <h5 className="text-center font-semibold text-sm text-neutral-500 uppercase tracking-wide">
-          Amount
-        </h5>
+        <SortableHeader
+          label="Bill Name"
+          column="name"
+          active={sortable.isSorted("name")}
+          direction={sortable.sort.direction}
+          onSort={sortable.toggleSort}
+        />
+        <SortableHeader
+          label="Due Date"
+          column="due_date"
+          active={sortable.isSorted("due_date")}
+          direction={sortable.sort.direction}
+          onSort={sortable.toggleSort}
+          align="center"
+        />
+        <SortableHeader
+          label="Amount"
+          column="amount"
+          active={sortable.isSorted("amount")}
+          direction={sortable.sort.direction}
+          onSort={sortable.toggleSort}
+          align="center"
+        />
         <h5 className="text-right font-semibold text-sm text-neutral-500 uppercase tracking-wide w-20">
           Actions
         </h5>

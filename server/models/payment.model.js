@@ -1,5 +1,8 @@
 const prisma = require("../lib/prisma");
-const { buildSearchWhere } = require("../utils/pagination");
+const {
+  buildSearchWhere,
+  buildSortOrder,
+} = require("../utils/pagination");
 const {
   EPSILON,
   endOfMonth,
@@ -16,6 +19,16 @@ const {
   computeBillStanding,
 } = require("../utils/billing");
 
+// Columns a client may sort the payment list by. bill_name and
+// recorded_by_name live on to-one relations, so they map through those.
+const PAYMENT_SORT_COLUMNS = {
+  unit_number: "paid_by_id",
+  bill_name: { relation: "bill", field: "name" },
+  amount: "amount",
+  recorded_by_name: { relation: "recordedBy", field: "name" },
+  paid_at: "paid_at",
+};
+
 // List all payments with the related bill and users resolved
 async function getAllPayments() {
   return prisma.payment.findMany({
@@ -31,10 +44,9 @@ async function getAllPayments() {
   });
 }
 
-// A page of payments, newest first, optionally filtered by a search
-// term (unit number, bill name or recorder name) and a date range.
-// The search runs against stored values only — the bill name filter is
-// resolved through the relation.
+// A page of payments, optionally filtered by a search term (unit
+// number, bill name or recorder name) and a date range. Sortable via
+// ?sort=<column>&order=asc|desc within PAYMENT_SORT_COLUMNS.
 async function getPaymentsPaginated({
   page = 1,
   pageSize = 50,
@@ -44,6 +56,8 @@ async function getPaymentsPaginated({
   bill_id = null,
   from = null,
   to = null,
+  sort = "",
+  order = "desc",
 } = {}) {
   const where = {
     ...(bill_id ? { bill_id: Number(bill_id) } : {}),
@@ -74,6 +88,11 @@ async function getPaymentsPaginated({
     ];
   }
 
+  const orderBy = buildSortOrder(sort, order, PAYMENT_SORT_COLUMNS, {
+    fallback: [{ paid_at: "desc" }],
+    tiebreaker: { payment_id: "desc" },
+  });
+
   const include = {
     bill: {
       select: { bill_id: true, name: true, due_date: true, amount: true },
@@ -87,7 +106,7 @@ async function getPaymentsPaginated({
     prisma.payment.findMany({
       where,
       include,
-      orderBy: [{ paid_at: "desc" }, { payment_id: "desc" }],
+      orderBy,
       skip,
       take,
     }),

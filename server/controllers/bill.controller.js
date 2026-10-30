@@ -9,7 +9,8 @@ async function getBills(req, res) {
     const supportsPagination =
       req.query.page !== undefined ||
       req.query.search !== undefined ||
-      req.query.cycle !== undefined;
+      req.query.cycle !== undefined ||
+      req.query.sort !== undefined;
 
     if (!supportsPagination) {
       const bills = await Bill.getAllBills();
@@ -26,6 +27,8 @@ async function getBills(req, res) {
       take,
       search: req.query.search,
       cycle: req.query.cycle,
+      sort: req.query.sort,
+      order: req.query.order,
     });
 
     return res.json({

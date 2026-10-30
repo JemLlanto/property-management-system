@@ -130,6 +130,8 @@ export interface BillListQueryProps {
   pageSize?: number;
   search?: string;
   cycle?: string;
+  sort?: string;
+  order?: "asc" | "desc";
 }
 
 // A page of bills, with an optional search term and cycle filter.
@@ -145,6 +147,8 @@ export const getBillsPaginated = async (
   }
   if (query.search) params.set("search", query.search);
   if (query.cycle) params.set("cycle", query.cycle);
+  if (query.sort) params.set("sort", query.sort);
+  if (query.order) params.set("order", query.order);
 
   const result = await request(
     "GET",

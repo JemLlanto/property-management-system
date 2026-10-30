@@ -17,6 +17,7 @@ import {
 import { getBills, BillDataProps } from "@/services/bill.service";
 import { BuildingDataProps, getBuildings } from "@/services/building.service";
 import { getUsers, UserDataProps } from "@/services/user.service";
+import { useSortableColumns } from "@/hooks/useSortableColumns";
 import PaymentModal from "./PaymentModal";
 import PaymentTable from "./PaymentTable";
 
@@ -42,6 +43,20 @@ const PaymentsPage = () => {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
+  // Column sorting — clicking a header cycles asc → desc → default
+  const sortable = useSortableColumns();
+
+  // Sorting changes the row order, so go back to the first page. Both
+  // state updates happen in the same handler, so the page and the sort
+  // reach the fetch together in one request.
+  const handleSort = useCallback(
+    (column: string) => {
+      sortable.toggleSort(column);
+      setPage(1);
+    },
+    [sortable],
+  );
+
   // Only Unit Owner accounts can have payments recorded against them
   const unitOwners = useMemo(
     () => users.filter((u) => u.type === "Unit Owner"),
@@ -51,12 +66,17 @@ const PaymentsPage = () => {
   // Load one page of payments, plus the lookup data the table needs
   // (bills, unit owners and buildings are small — fetched in full).
   const loadPayments = useCallback(async () => {
-    const result = await getPaymentsPaginated({ page, pageSize, search });
+    const result = await getPaymentsPaginated({
+      page,
+      pageSize,
+      search,
+      ...sortable.sortParams,
+    });
 
     setPayments(result.payments);
     setTotal(result.total);
     setTotalPages(result.total_pages);
-  }, [page, pageSize, search]);
+  }, [page, pageSize, search, sortable.sortParams]);
 
   // Checking user authorization and loading payments plus lookup data
   useEffect(() => {
@@ -158,6 +178,7 @@ const PaymentsPage = () => {
         handleDelete={handleDelete}
         searchInput={searchInput}
         setSearchInput={setSearchInput}
+        sortable={{ ...sortable, toggleSort: handleSort }}
       />
 
       {/* Pagination */}

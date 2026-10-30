@@ -3,7 +3,16 @@ const { customAlphabet } = require("nanoid");
 const { Decimal } = require("@prisma/client");
 
 const prisma = require("../lib/prisma");
-const { buildSearchWhere } = require("../utils/pagination");
+const { buildSearchWhere, buildSortOrder } = require("../utils/pagination");
+
+// Columns a client may sort the user list by, mapped to Prisma fields.
+const USER_SORT_COLUMNS = {
+  name: "name",
+  email: "email",
+  type: "type",
+  unit_number: "unit_number",
+  created_at: "created_at",
+};
 
 const USER_TYPES = ["Unit Owner", "Admin", "Super Admin"];
 
@@ -204,7 +213,7 @@ async function getAllUsers() {
 }
 
 // A page of users, optionally filtered by a search term and a type.
-// `columns` are the fields the search term is matched against.
+// Sortable via ?sort=<column>&order=asc|desc within USER_SORT_COLUMNS.
 async function getUsersPaginated({
   page = 1,
   pageSize = 50,
@@ -212,6 +221,8 @@ async function getUsersPaginated({
   take = 50,
   search = "",
   type = "",
+  sort = "",
+  order = "desc",
 } = {}) {
   const where = {
     ...(type ? { type } : {}),
@@ -222,10 +233,17 @@ async function getUsersPaginated({
     }),
   };
 
+  // Newest first by default; sorting by unit_number puts the nulls last
+  // so owners without a unit do not crowd the top.
+  const orderBy = buildSortOrder(sort, order, USER_SORT_COLUMNS, {
+    fallback: [{ created_at: "desc" }],
+    tiebreaker: { user_id: "asc" },
+  });
+
   const [users, total] = await Promise.all([
     prisma.user.findMany({
       where,
-      orderBy: { created_at: "desc" },
+      orderBy,
       skip,
       take,
     }),

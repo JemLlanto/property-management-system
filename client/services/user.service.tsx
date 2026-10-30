@@ -59,6 +59,8 @@ export interface ListQueryProps {
   pageSize?: number;
   search?: string;
   type?: string;
+  sort?: string;
+  order?: "asc" | "desc";
 }
 
 // Build a query string from the list parameters, skipping empty values.
@@ -128,6 +130,8 @@ export const getUsersPaginated = async (
     pageSize: query.pageSize,
     search: query.search,
     type: query.type,
+    sort: query.sort,
+    order: query.order,
   });
 
   try {

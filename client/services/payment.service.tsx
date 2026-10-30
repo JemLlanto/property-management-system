@@ -197,6 +197,8 @@ export interface PaymentListQueryProps {
   bill_id?: number | string;
   from?: string;
   to?: string;
+  sort?: string;
+  order?: "asc" | "desc";
 }
 
 // A page of payments, newest first, with an optional search term, bill
@@ -215,6 +217,8 @@ export const getPaymentsPaginated = async (
   if (query.bill_id) params.set("bill_id", String(query.bill_id));
   if (query.from) params.set("from", query.from);
   if (query.to) params.set("to", query.to);
+  if (query.sort) params.set("sort", query.sort);
+  if (query.order) params.set("order", query.order);
 
   const result = await request(
     "GET",

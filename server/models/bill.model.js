@@ -1,11 +1,22 @@
 const prisma = require("../lib/prisma");
-const { buildSearchWhere } = require("../utils/pagination");
+const {
+  buildSearchWhere,
+  buildSortOrder,
+} = require("../utils/pagination");
 
 // Allowed billing cycles
 const BILLING_CYCLES = ["Weekly", "Half-Month", "Monthly", "Quarterly"];
 
 // How a late fee is calculated
 const LATE_FEE_TYPES = ["fixed", "percent"];
+
+// Columns a client may sort the bill list by.
+const BILL_SORT_COLUMNS = {
+  name: "name",
+  due_date: "due_date",
+  amount: "amount",
+  created_at: "created_at",
+};
 
 // List all bills
 async function getAllBills() {
@@ -15,7 +26,8 @@ async function getAllBills() {
 }
 
 // A page of bills, optionally filtered by a search term (name) and a
-// minimum amount.
+// minimum amount. Sortable via ?sort=<column>&order=asc|desc within
+// BILL_SORT_COLUMNS.
 async function getBillsPaginated({
   page = 1,
   pageSize = 50,
@@ -23,16 +35,23 @@ async function getBillsPaginated({
   take = 50,
   search = "",
   cycle = "",
+  sort = "",
+  order = "desc",
 } = {}) {
   const where = {
     ...(cycle ? { due_date: cycle } : {}),
     ...buildSearchWhere(search, { name: "contains" }),
   };
 
+  const orderBy = buildSortOrder(sort, order, BILL_SORT_COLUMNS, {
+    fallback: [{ bill_id: "desc" }],
+    tiebreaker: { bill_id: "asc" },
+  });
+
   const [bills, total] = await Promise.all([
     prisma.bill.findMany({
       where,
-      orderBy: { bill_id: "desc" },
+      orderBy,
       skip,
       take,
     }),

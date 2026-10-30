@@ -3,6 +3,8 @@
 import { UserDataProps } from "@/services/user.service";
 import { BuildingDataProps } from "@/services/building.service";
 import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { UseSortableColumnsResult } from "@/hooks/useSortableColumns";
+import SortableHeader from "../_components/SortableHeader";
 
 interface TableProps {
   isLoading: boolean;
@@ -15,6 +17,8 @@ interface TableProps {
   // Search box lives in the table header
   searchInput: string;
   setSearchInput: (value: string) => void;
+  // Column sorting lives in the table headers
+  sortable: UseSortableColumnsResult;
 }
 
 const UserTable = ({
@@ -27,6 +31,7 @@ const UserTable = ({
   openDetailsModal,
   searchInput,
   setSearchInput,
+  sortable,
 }: TableProps) => {
   return (
     <div className="w-full mx-auto p-5 bg-white border border-gray-200 rounded-xl shadow-sm font-sans">
@@ -62,21 +67,38 @@ const UserTable = ({
 
       {/* Table header */}
       <div className="grid grid-cols-[2fr_1fr_2fr_2fr_1fr_auto] gap-2 border-b border-neutral-300 pb-2 px-2">
-        <h5 className="text-left font-semibold text-sm text-neutral-500 uppercase tracking-wide">
-          Email
-        </h5>
-        <h5 className="text-left font-semibold text-sm text-neutral-500 uppercase tracking-wide">
-          User Type
-        </h5>
-        <h5 className="text-left font-semibold text-sm text-neutral-500 uppercase tracking-wide">
-          Unit Owner
-        </h5>
+        <SortableHeader
+          label="Email"
+          column="email"
+          active={sortable.isSorted("email")}
+          direction={sortable.sort.direction}
+          onSort={sortable.toggleSort}
+        />
+        <SortableHeader
+          label="User Type"
+          column="type"
+          active={sortable.isSorted("type")}
+          direction={sortable.sort.direction}
+          onSort={sortable.toggleSort}
+        />
+        <SortableHeader
+          label="Unit Owner"
+          column="name"
+          active={sortable.isSorted("name")}
+          direction={sortable.sort.direction}
+          onSort={sortable.toggleSort}
+        />
         <h5 className="text-left font-semibold text-sm text-neutral-500 uppercase tracking-wide">
           Building
         </h5>
-        <h5 className="text-center font-semibold text-sm text-neutral-500 uppercase tracking-wide">
-          Unit No.
-        </h5>
+        <SortableHeader
+          label="Unit No."
+          column="unit_number"
+          active={sortable.isSorted("unit_number")}
+          direction={sortable.sort.direction}
+          onSort={sortable.toggleSort}
+          align="center"
+        />
         <h5 className="text-right font-semibold text-sm text-neutral-500 uppercase tracking-wide w-20">
           Actions
         </h5>
