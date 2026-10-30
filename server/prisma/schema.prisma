@@ -135,27 +135,3 @@ model AuditLog {
   @@map("audit_log")
 }
 
-model Stock {
-  id    Int    @id @default(autoincrement())
-  name  String @db.VarChar(100)
-  specs String @db.VarChar(100)
-
-  @@map("stocks")
-}
-
-model StockItem {
-  id           Int       @id @default(autoincrement())
-  stockId      Int       @map("stockId")
-  serialNumber String?   @map("serialNumber") @db.VarChar(100)
-  specs        String?   @db.Text
-  PRDate       String?   @map("PRDate") @db.VarChar(100)
-  receivedDate DateTime? @map("receivedDate") @db.Date
-  deployedDate DateTime? @map("deployedDate") @db.Date
-  station      String?   @db.VarChar(100)
-  department   String?   @db.VarChar(100)
-  remarks      String?   @db.VarChar(100)
-
-  @@index([stockId])
-  @@map("stock_items")
-}
-

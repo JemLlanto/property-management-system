@@ -73,13 +73,6 @@ const RegisterForm = () => {
           handleRegister();
         }}
       >
-        {/* Use if you want to add email verification */}
-        {/* <OTPVerificationModal
-          modalShow={modalShow}
-          handleOTPModal={handleOTPModal}
-          handleRegister={handleRegister}
-          loading={loading}
-        /> */}
         {formError && (
           <div className="flex">
             <span className="w-10/10 text-sm bg-red-500/30 rounded p-2">
