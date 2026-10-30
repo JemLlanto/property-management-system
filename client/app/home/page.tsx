@@ -153,7 +153,23 @@ const DashboardPage = () => {
     load(from, to);
   };
 
-  const { metrics } = data;
+  const { metrics, comparison } = data;
+
+  // Delta badge text vs the previous period. Null when there is no
+  // meaningful comparison (e.g. no revenue in the prior window).
+  const formatDelta = (percent: number | null | undefined) => {
+    if (percent === null || percent === undefined) return undefined;
+
+    const rounded = Math.round(percent * 10) / 10;
+    const sign = rounded > 0 ? "↑" : rounded < 0 ? "↓" : "–";
+
+    return `${sign} ${Math.abs(rounded)}% vs prior period`;
+  };
+
+  const revenueDelta = formatDelta(comparison?.revenue_change_percent);
+  const paymentCountDelta = formatDelta(
+    comparison?.payment_count_change_percent,
+  );
 
   // Revenue per payer — ranked for the top payers list
   const topPayers = useMemo(
@@ -225,7 +241,25 @@ const DashboardPage = () => {
           value={formatCurrency(metrics.total_revenue)}
           icon={Banknote}
           accent="text-emerald-700 bg-emerald-50"
-          hint={`${metrics.payment_count} payment${metrics.payment_count === 1 ? "" : "s"} in period`}
+          hint={
+            <span>
+              {revenueDelta && (
+                <span
+                  className={
+                    (comparison?.revenue_change_percent ?? 0) >= 0
+                      ? "text-emerald-600"
+                      : "text-red-500"
+                  }
+                >
+                  {revenueDelta}{" "}
+                </span>
+              )}
+              <span>
+                {metrics.payment_count} payment
+                {metrics.payment_count === 1 ? "" : "s"} in period
+              </span>
+            </span>
+          }
           loading={isLoading}
         />
         <MetricCard

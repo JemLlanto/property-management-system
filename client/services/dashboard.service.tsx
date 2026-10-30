@@ -79,8 +79,23 @@ export interface DashboardRangeProps {
   days: number;
 }
 
+// The mirror window immediately before the selected one, with the
+// headline deltas between the two periods.
+export interface DashboardComparisonProps {
+  previous: {
+    from: string;
+    to: string;
+    total_revenue: number;
+    payment_count: number;
+  };
+  // null when the previous period had no revenue (no meaningful delta)
+  revenue_change_percent: number | null;
+  payment_count_change_percent: number | null;
+}
+
 export interface DashboardProps {
   range: DashboardRangeProps;
+  comparison?: DashboardComparisonProps;
   metrics: DashboardMetricsProps;
   revenue_by_day: DailyAmountProps[];
   revenue_by_bill: NamedAmountProps[];

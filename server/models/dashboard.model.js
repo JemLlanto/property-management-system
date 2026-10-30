@@ -82,8 +82,17 @@ function enumerateDays(start, end) {
 // Aggregate the whole property-management picture for the dashboard.
 // Everything is derived in one pass over the payments so the client only
 // needs a single request.
+//
+// The same length window shifted back one period is computed alongside, so
+// the client can show "revenue ↑12% vs prior period" without a second
+// request.
 async function getDashboardSummary(from, to) {
   const { start, end } = resolveRange(from, to);
+
+  // Mirror window immediately before the selected one, same length.
+  const spanMs = end.getTime() - start.getTime();
+  const prevEnd = new Date(start.getTime() - 1);
+  const prevStart = new Date(prevEnd.getTime() - spanMs);
 
   const [payments, bills, owners, buildings] = await Promise.all([
     prisma.payment.findMany({
@@ -305,12 +314,47 @@ async function getDashboardSummary(from, to) {
       .map(([name, amount]) => ({ name, amount: Number(amount) }))
       .sort((a, b) => b.amount - a.amount);
 
+  // ---------- Comparison with the previous period ----------
+  // Revenue and payment count for the mirror window that came right
+  // before the selected one, with percentage deltas. Arrears cannot be
+  // compared historically without replaying cycle deadlines per window,
+  // so it is intentionally left out.
+  const previousRevenue = payments
+    .filter((p) => {
+      const paidAt = new Date(p.paid_at);
+      return paidAt >= prevStart && paidAt <= prevEnd;
+    })
+    .reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
+
+  const previousPaymentCount = payments.filter((p) => {
+    const paidAt = new Date(p.paid_at);
+    return paidAt >= prevStart && paidAt <= prevEnd;
+  }).length;
+
+  const percentDelta = (current, previous) =>
+    previous > 0 ? ((current - previous) / previous) * 100 : null;
+
+  const comparison = {
+    previous: {
+      from: dayKey(prevStart),
+      to: dayKey(prevEnd),
+      total_revenue: Math.round(previousRevenue * 100) / 100,
+      payment_count: previousPaymentCount,
+    },
+    revenue_change_percent: percentDelta(totalRevenue, previousRevenue),
+    payment_count_change_percent: percentDelta(
+      inRange.length,
+      previousPaymentCount,
+    ),
+  };
+
   return {
     range: {
       from: dayKey(start),
       to: dayKey(end),
       days: days.length,
     },
+    comparison,
     metrics: {
       total_revenue: totalRevenue,
       payment_count: inRange.length,
