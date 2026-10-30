@@ -56,7 +56,7 @@ async function register(req, res) {
 
     const accessToken = signAccessToken(user);
     const refreshToken = signRefreshToken(user);
-    User.addRefreshToken(user, refreshToken);
+    await User.addRefreshToken(user, refreshToken);
 
     setAuthCookies(res, accessToken, refreshToken);
     return res.status(201).json({
@@ -105,7 +105,7 @@ async function login(req, res) {
 
   const accessToken = signAccessToken(user);
   const refreshToken = signRefreshToken(user);
-  User.addRefreshToken(user, refreshToken);
+  await User.addRefreshToken(user, refreshToken);
 
   setAuthCookies(res, accessToken, refreshToken);
   return res.json({
@@ -129,17 +129,17 @@ async function refresh(req, res) {
 
   try {
     const payload = verifyRefreshToken(token);
-    const user = User.findById(payload.sub);
+    const user = await User.findById(payload.sub);
 
     if (!user || !User.hasRefreshToken(user, token)) {
       return res.status(401).json({ message: "Invalid refresh token" });
     }
 
     // Rotate the refresh token so a stolen old one becomes useless.
-    User.removeRefreshToken(user, token);
+    await User.removeRefreshToken(user, token);
     const newAccessToken = signAccessToken(user);
     const newRefreshToken = signRefreshToken(user);
-    User.addRefreshToken(user, newRefreshToken);
+    await User.addRefreshToken(user, newRefreshToken);
 
     setAuthCookies(res, newAccessToken, newRefreshToken);
     return res.json({ message: "Token refreshed" });
@@ -155,8 +155,8 @@ async function logout(req, res) {
   if (token) {
     try {
       const payload = verifyRefreshToken(token);
-      const user = User.findById(payload.sub);
-      if (user) User.removeRefreshToken(user, token);
+      const user = await User.findById(payload.sub);
+      if (user) await User.removeRefreshToken(user, token);
     } catch {
       // token was already invalid/expired — nothing to clean up
     }
