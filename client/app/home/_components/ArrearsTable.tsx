@@ -12,7 +12,7 @@ interface ArrearsTableProps {
 // The unit owners who still owe money, biggest debt first.
 const ArrearsTable = ({ owners, isLoading }: ArrearsTableProps) => {
   return (
-    <div className="w-full mx-auto p-5 bg-white border border-gray-200 rounded-xl shadow-sm font-sans">
+    <div className="w-full mx-auto p-2 md:p-5 bg-white border border-gray-200 rounded-lg md:rounded-xl shadow-sm font-sans">
       <div className="flex items-center justify-between gap-2 mb-4">
         <h3 className="text-lg font-semibold text-neutral-800">
           Owners in Arrears

@@ -27,8 +27,8 @@ const DateRangePicker = ({
   onRefresh,
 }: DateRangePickerProps) => {
   return (
-    <div className="w-full mx-auto p-4 bg-white border border-gray-200 rounded-xl shadow-sm font-sans">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="w-full mx-auto p-2 md:p-4 bg-white border border-gray-200 rounded-lg md:rounded-xl shadow-sm font-sans">
+      <div className="flex flex-wrap items-end justify-between gap-2 md:gap-4">
         {/* Presets */}
         <div>
           <h5 className="font-semibold text-sm text-neutral-500 uppercase tracking-wide mb-2">

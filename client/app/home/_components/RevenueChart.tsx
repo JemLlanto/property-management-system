@@ -93,7 +93,7 @@ const RevenueChart = ({ data, isLoading }: RevenueChartProps) => {
 
   if (isLoading) {
     return (
-      <div className="w-full mx-auto p-5 bg-white border border-gray-200 rounded-xl shadow-sm font-sans">
+      <div className="w-full mx-auto p-2 md:p-5 bg-white border border-gray-200 rounded-lg md:rounded-xl shadow-sm font-sans">
         <h3 className="text-lg font-semibold text-neutral-800 mb-4">
           Revenue Trend
         </h3>
@@ -103,7 +103,7 @@ const RevenueChart = ({ data, isLoading }: RevenueChartProps) => {
   }
 
   return (
-    <div className="w-full mx-auto p-5 bg-white border border-gray-200 rounded-xl shadow-sm font-sans">
+    <div className="w-full mx-auto p-2 md:p-5 bg-white border border-gray-200 rounded-lg md:rounded-xl shadow-sm font-sans">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h3 className="text-lg font-semibold text-neutral-800">
           Revenue Trend

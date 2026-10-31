@@ -20,7 +20,7 @@ const RemindersPanel = ({ reminders, isLoading }: RemindersPanelProps) => {
   ).length;
 
   return (
-    <div className="w-full mx-auto p-5 bg-white border border-gray-200 rounded-xl shadow-sm font-sans">
+    <div className="w-full mx-auto p-2 md:p-5 bg-white border border-gray-200 rounded-lg md:rounded-xl shadow-sm font-sans">
       <div className="flex items-center justify-between gap-2 mb-4">
         <h3 className="text-lg font-semibold text-neutral-800 flex items-center gap-2">
           <BellRing size={18} />

@@ -25,7 +25,7 @@ const OccupancyCard = ({
   const capped = Math.min(Math.max(occupancyRate, 0), 100);
 
   return (
-    <div className="w-full mx-auto p-5 bg-white border border-gray-200 rounded-xl shadow-sm font-sans">
+    <div className="w-full mx-auto p-2 md:p-5 bg-white border border-gray-200 rounded-lg md:rounded-xl shadow-sm font-sans">
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
           <h5 className="text-left font-semibold text-sm text-neutral-500 uppercase tracking-wide">
