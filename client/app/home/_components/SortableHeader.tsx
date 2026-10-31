@@ -23,9 +23,17 @@ const SortableHeader = ({
   align = "left",
 }: SortableHeaderProps) => {
   const justify =
-    align === "center" ? "justify-center" : align === "right" ? "justify-end" : "justify-start";
+    align === "center"
+      ? "justify-center"
+      : align === "right"
+        ? "justify-end"
+        : "justify-start";
 
-  const Chevron = !active ? ArrowUpDown : direction === "asc" ? ArrowUp : ArrowDown;
+  const Chevron = !active
+    ? ArrowUpDown
+    : direction === "asc"
+      ? ArrowUp
+      : ArrowDown;
 
   return (
     <button

@@ -19,7 +19,7 @@ const SideBarMobile = () => {
         <button
           type="button"
           aria-label={sideBarVisible ? "Hide menu" : "Show menu"}
-          className={`absolute top-17.5 -right-4 size-9 md:size-10 bg-(--primary_hover) text-(--background) flex md:hidden justify-center items-center rounded-full border-2 px-2 transition duration-200 cursor-pointer z-2`}
+          className={`absolute top-16.5 -right-4 size-9 md:size-10 bg-(--primary_hover) text-(--background) flex md:hidden justify-center items-center rounded-full border-2 px-2 transition duration-200 cursor-pointer z-2`}
           onClick={() => dispatch(toggleSideBarVisible())}
         >
           {sideBarVisible ? (

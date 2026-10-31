@@ -1,7 +1,8 @@
 "use client";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { toggleSideBarVisible } from "@/store/sidebarMobileToggleSlice";
 
 // Links only staff (Admin / Super Admin) can see. Unit owners are
 // limited to Dashboard, Payments and Settings — matching the server
@@ -16,7 +17,9 @@ const STAFF_ONLY_HREFS = [
 
 const SideBarLinks = () => {
   const pathname = usePathname();
+  const dispatch = useAppDispatch();
   const userType = useAppSelector((state) => state.userData.type);
+
   const isStaff = userType === "Admin" || userType === "Super Admin";
 
   const navLinks = [
@@ -43,7 +46,10 @@ const SideBarLinks = () => {
   };
 
   return (
-    <ul className="h-full w-full bg-(--primary_hover) text-(--background) flex flex-col items-center gap-2 p-3 pt-17 md:pt-20">
+    <ul className="h-full w-full bg-(--primary_hover) text-(--background) flex flex-col items-start gap-1 md:gap-2 p-3 pt-17 md:pt-20">
+      <h4 className="blocks md:hidden text-(--background) text-start border-b border-(--background)/50 pb-1 mb-1">
+        Property Management Portal
+      </h4>
       {navLinks.map((link) => {
         const isActive = isLinkActive(link.href);
 
@@ -51,12 +57,13 @@ const SideBarLinks = () => {
           <li className="w-full flex" key={link.href}>
             <Link
               aria-current={isActive ? "page" : undefined}
-              className={`w-full flex items-center rounded p-2 transition-all ${
+              className={`w-full flex items-center rounded p-1 md:p-2 transition-all ${
                 isActive ? "bg-(--background)/20" : "hover:bg-(--background)/5"
               }`}
               href={link.href}
+              onClick={() => dispatch(toggleSideBarVisible())}
             >
-              {link.name}
+              <p>{link.name}</p>
             </Link>
           </li>
         );

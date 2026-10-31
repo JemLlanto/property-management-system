@@ -54,10 +54,7 @@ export function useSortableColumns(): UseSortableColumnsResult {
   );
 
   const sortParams = useMemo(
-    () =>
-      sort.column
-        ? { sort: sort.column, order: sort.direction }
-        : {},
+    () => (sort.column ? { sort: sort.column, order: sort.direction } : {}),
     [sort],
   );
 

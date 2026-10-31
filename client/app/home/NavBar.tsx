@@ -42,7 +42,7 @@ const NavBar = () => {
           >
             <Menu size={17} strokeWidth={3} />
           </button>
-          <h5>BOILER PLATE</h5>
+          <h4 className="hidden md:block">Property Management Portal</h4>
         </div>
 
         <div className="flex gap-2">
