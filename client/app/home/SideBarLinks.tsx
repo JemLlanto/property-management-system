@@ -46,7 +46,7 @@ const SideBarLinks = () => {
   };
 
   return (
-    <ul className="h-full w-full bg-(--primary_hover) text-(--background) flex flex-col items-start gap-1 md:gap-2 p-3 pt-17 md:pt-20">
+    <ul className="h-full w-full bg-(--primary_hover) text-(--background) flex flex-col items-start gap-1 md:gap-2 p-3 pt-16 md:pt-20">
       <h4 className="blocks md:hidden text-(--background) text-start border-b border-(--background)/50 pb-1 mb-1">
         Property Management Portal
       </h4>
