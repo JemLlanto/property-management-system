@@ -3,7 +3,6 @@
 import { checkUser } from "@/utils/auth.helper";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, Banknote, TrendingUp, Users, Wallet } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setUser } from "@/store/userDataSlice";
 import {
@@ -19,22 +18,9 @@ import {
   PaymentDataProps,
   UnpaidBillProps,
 } from "@/services/payment.service";
-import {
-  formatCurrency,
-  formatPercent,
-  formatReadableDate,
-  startOfRange,
-  todayKey,
-} from "@/utils/dashboard.helper";
-import ActivityPanel from "./_components/ActivityPanel";
-import ArrearsTable from "./_components/ArrearsTable";
-import BreakdownList from "./_components/BreakdownList";
-import DateRangePicker from "./_components/DateRangePicker";
-import ExportButton from "./_components/ExportButton";
-import MetricCard from "./_components/MetricCard";
-import OccupancyCard from "./_components/OccupancyCard";
-import RemindersPanel from "./_components/RemindersPanel";
-import RevenueChart from "./_components/RevenueChart";
+import { startOfRange, todayKey } from "@/utils/dashboard.helper";
+import UnitOwnerView from "./UnitOwnerView";
+import UnitAdminView from "./UnitAdminView";
 
 // Days covered by each quick preset
 const RANGE_DAYS: Record<RangePreset, number> = {
@@ -251,416 +237,32 @@ const DashboardPage = () => {
 
   if (isUnitOwnerView) {
     return (
-      <div className="pt-2 pb-10 space-y-4">
-        <div className="rounded-2xl bg-linear-to-r from-(--primary)/80 via-(--primary) to-(--primary_hover) p-5 text-white shadow-sm">
-          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-sm text-sky-100 uppercase tracking-wide">
-                Welcome back
-              </p>
-              <h2 className="mt-1 text-2xl font-semibold">
-                {userData.name || userData.email || "Unit Owner"}
-              </h2>
-            </div>
-            <div className="rounded-xl bg-white/10 px-3 py-2 text-sm backdrop-blur-sm">
-              <span className="font-medium">Unit</span>{" "}
-              {ownerSummary.unitNumber} · {ownerSummary.buildingLabel}
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              Outstanding balance
-            </p>
-            <p
-              className={`mt-3 text-2xl font-bold ${ownerSummary.ownerBalance > 0 ? "text-red-600" : "text-emerald-600"}`}
-            >
-              {formatCurrency(ownerSummary.ownerBalance)}
-            </p>
-            <p className="mt-2 text-sm text-neutral-500">
-              Current amount due for your unit
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              Next due
-            </p>
-            <p className="mt-3 text-2xl font-bold text-neutral-800">
-              {ownerSummary.nextDue
-                ? formatCurrency(ownerSummary.nextDue.amount)
-                : "₱0.00"}
-            </p>
-            <p className="mt-2 text-sm text-neutral-500">
-              {ownerSummary.nextDue
-                ? `${ownerSummary.nextDue.name} · ${formatReadableDate(ownerSummary.nextDue.due_date)}`
-                : "No bill scheduled"}
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              Last payment
-            </p>
-            <p className="mt-3 text-2xl font-bold text-neutral-800">
-              {ownerSummary.recentOwnerPayments[0]
-                ? formatCurrency(ownerSummary.recentOwnerPayments[0].amount)
-                : "₱0.00"}
-            </p>
-            <p className="mt-2 text-sm text-neutral-500">
-              {ownerSummary.recentOwnerPayments[0]
-                ? `${ownerSummary.recentOwnerPayments[0].bill_name} · ${formatReadableDate(ownerSummary.recentOwnerPayments[0].paid_at)}`
-                : "No recent payment recorded"}
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              Status
-            </p>
-            <p
-              className={`mt-3 text-2xl font-bold ${ownerSummary.ownerBalance > 0 ? "text-red-600" : "text-emerald-600"}`}
-            >
-              {ownerSummary.ownerBalance > 0 ? "Due" : "Current"}
-            </p>
-            <p className="mt-2 text-sm text-neutral-500">
-              {ownerSummary.ownerBalance > 0
-                ? "Please settle your outstanding balance"
-                : "Your account is up to date"}
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-            <h3 className="text-lg font-semibold text-neutral-800">
-              Upcoming dues
-            </h3>
-            <div className="mt-4 space-y-3">
-              {data.upcoming_dues.slice(0, 4).map((due) => (
-                <div
-                  key={due.bill_id}
-                  className="flex items-center justify-between rounded-lg border border-neutral-200 px-3 py-2"
-                >
-                  <div>
-                    <p className="font-medium text-neutral-800">{due.name}</p>
-                    <p className="text-sm text-neutral-500">
-                      {formatReadableDate(due.due_date)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-neutral-800">
-                      {formatCurrency(due.amount)}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {data.upcoming_dues.length === 0 && (
-                <p className="text-sm text-neutral-500">
-                  No upcoming dues available.
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Dynamic panel: Missed Bills when any exist, otherwise
-              Advance Payments when the owner has settled ahead */}
-          {missedBills.length > 0 ? (
-            <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-              <h3 className="text-lg font-semibold text-neutral-800">
-                Missed Bills
-              </h3>
-              <div className="mt-4 space-y-3">
-                {missedBills.map((bill) => (
-                  <div
-                    key={bill.bill_id}
-                    className="flex items-center justify-between rounded-lg border border-neutral-200 px-3 py-2"
-                  >
-                    <div>
-                      <p className="font-medium text-neutral-800">
-                        {bill.name}
-                      </p>
-                      <p className="text-sm text-neutral-500">
-                        {bill.missed_count} cycle
-                        {bill.missed_count === 1 ? "" : "s"} missed ·{" "}
-                        {formatCurrency(bill.amount)} per cycle
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-red-600">
-                        {formatCurrency(bill.outstanding)}
-                      </p>
-                      <p className="text-xs text-neutral-500">outstanding</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : paidAheadBills.length > 0 ? (
-            <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-              <h3 className="text-lg font-semibold text-neutral-800">
-                Advance Payments
-              </h3>
-              <div className="mt-4 space-y-3">
-                {paidAheadBills.map((bill) => {
-                  // The running cycle is already settled by credit, and
-                  // remaining credit may cover additional cycles ahead.
-                  const extraCycles = bill.amount
-                    ? Math.floor((bill.remaining_credit ?? 0) / bill.amount)
-                    : 0;
-                  const cyclesAhead = 1 + extraCycles;
-
-                  return (
-                    <div
-                      key={bill.bill_id}
-                      className="flex items-center justify-between rounded-lg border border-neutral-200 px-3 py-2"
-                    >
-                      <div>
-                        <p className="font-medium text-neutral-800">
-                          {bill.name}
-                        </p>
-                        <p className="text-sm text-neutral-500">
-                          Paid up to {cyclesAhead} cycle
-                          {cyclesAhead === 1 ? "" : "s"} ahead
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-emerald-600">
-                          {formatCurrency(bill.credit ?? 0)}
-                        </p>
-                        <p className="text-xs text-neutral-500">
-                          advance credit
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-              <h3 className="text-lg font-semibold text-neutral-800">
-                Account Standing
-              </h3>
-              <p className="mt-4 text-sm text-neutral-500">
-                No missed bills and no advance payments recorded.
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm xl:col-span-2">
-            <h3 className="text-lg font-semibold text-neutral-800">
-              Recent payments
-            </h3>
-            <div className="mt-4 space-y-3">
-              {ownerSummary.recentOwnerPayments.slice(0, 4).map((payment) => (
-                <div
-                  key={payment.payment_id}
-                  className="flex items-center justify-between rounded-lg border border-neutral-200 px-3 py-2"
-                >
-                  <div>
-                    <p className="font-medium text-neutral-800">
-                      {payment.bill_name}
-                    </p>
-                    <p className="text-sm text-neutral-500">
-                      {formatReadableDate(payment.paid_at)}
-                    </p>
-                  </div>
-                  <p className="font-semibold text-emerald-600">
-                    {formatCurrency(payment.amount)}
-                  </p>
-                </div>
-              ))}
-              {ownerSummary.recentOwnerPayments.length === 0 && (
-                <p className="text-sm text-neutral-500">
-                  No payments recorded yet.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      <UnitOwnerView
+        userName={userData.name}
+        userEmail={userData.email}
+        ownerSummary={ownerSummary}
+        data={data}
+        missedBills={missedBills}
+        paidAheadBills={paidAheadBills}
+      />
     );
   }
 
   return (
-    <div className="pt-2 pb-10 space-y-4">
-      {/* Page heading */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-semibold text-neutral-800 flex items-center gap-2">
-            <Activity size={22} />
-            Dashboard
-          </h2>
-          <p className="text-sm text-neutral-500">
-            {data.range.from
-              ? `${data.range.from} to ${data.range.to} · ${data.range.days} day${data.range.days === 1 ? "" : "s"}`
-              : "Select a period to load the report."}
-          </p>
-        </div>
-        <ExportButton
-          filename={`dashboard-${data.range.from || "report"}-to-${data.range.to || "report"}.csv`}
-          headers={[
-            "Date",
-            "Bill",
-            "Unit Number",
-            "Owner",
-            "Building",
-            "Amount",
-          ]}
-          rows={data.recent_payments.map((payment) => [
-            payment.paid_at,
-            payment.bill_name,
-            payment.unit_number ?? "",
-            payment.owner_name ?? "",
-            payment.building,
-            payment.amount,
-          ])}
-          label="Export Payments"
-          disabled={isLoading || data.recent_payments.length === 0}
-        />
-      </div>
-
-      {/* Date range controls */}
-      <DateRangePicker
-        from={from}
-        to={to}
-        preset={preset}
-        isLoading={isLoading}
-        onPresetChange={handlePresetChange}
-        onFromChange={handleFromChange}
-        onToChange={handleToChange}
-        onRefresh={handleRefresh}
-      />
-
-      {/* Headline metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <MetricCard
-          title="Revenue Collected"
-          value={formatCurrency(metrics.total_revenue)}
-          icon={Banknote}
-          accent="text-emerald-700 bg-emerald-50"
-          hint={
-            <span>
-              {revenueDelta && (
-                <span
-                  className={
-                    (comparison?.revenue_change_percent ?? 0) >= 0
-                      ? "text-emerald-600"
-                      : "text-red-500"
-                  }
-                >
-                  {revenueDelta}{" "}
-                </span>
-              )}
-              <span>
-                {metrics.payment_count} payment
-                {metrics.payment_count === 1 ? "" : "s"} in period
-              </span>
-            </span>
-          }
-          loading={isLoading}
-        />
-        <MetricCard
-          title="Net Cash Flow"
-          value={formatCurrency(metrics.net_cash_flow)}
-          icon={Wallet}
-          accent="text-amber-700 bg-amber-50"
-          hint={`${formatCurrency(metrics.total_expenses)} expenses in period`}
-          loading={isLoading}
-        />
-        <MetricCard
-          title="Outstanding"
-          value={formatCurrency(metrics.total_outstanding)}
-          icon={Wallet}
-          accent="text-red-600 bg-red-50"
-          hint={`${metrics.arrears_count} owner${metrics.arrears_count === 1 ? "" : "s"} in arrears`}
-          loading={isLoading}
-        />
-        <MetricCard
-          title="Collection Rate"
-          value={formatPercent(metrics.collection_rate)}
-          icon={TrendingUp}
-          accent="text-(--primary) bg-cyan-50"
-          hint={`${formatCurrency(metrics.average_daily_revenue)} avg per day`}
-          loading={isLoading}
-        />
-        <MetricCard
-          title="Unit Owners"
-          value={String(metrics.unit_owners)}
-          icon={Users}
-          accent="text-violet-700 bg-violet-50"
-          hint={`${metrics.bill_count} active bill${metrics.bill_count === 1 ? "" : "s"}`}
-          loading={isLoading}
-        />
-      </div>
-
-      {/* Chart + occupancy */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <div className="xl:col-span-2">
-          <RevenueChart data={data.revenue_by_day} isLoading={isLoading} />
-        </div>
-        <OccupancyCard
-          occupancyRate={metrics.occupancy_rate}
-          occupants={metrics.total_occupants}
-          capacity={metrics.total_capacity}
-          buildingCount={metrics.building_count}
-          unitOwners={metrics.unit_owners}
-          isLoading={isLoading}
-        />
-      </div>
-
-      {/* Breakdowns */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <BreakdownList
-          title="Revenue by Bill"
-          data={data.revenue_by_bill}
-          isLoading={isLoading}
-          emptyText="No payments were recorded in this period."
-        />
-        <BreakdownList
-          title="Revenue by Building"
-          data={data.revenue_by_building}
-          isLoading={isLoading}
-          emptyText="No payments were recorded in this period."
-        />
-        <BreakdownList
-          title="Top Payers"
-          data={topPayers.map((payer) => ({
-            name: `${payer.rank}. ${payer.name}`,
-            amount: payer.amount,
-          }))}
-          isLoading={isLoading}
-          emptyText="No payments were recorded in this period."
-        />
-      </div>
-
-      {/* Arrears */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <ArrearsTable owners={data.owners_in_arrears} isLoading={isLoading} />
-        <BreakdownList
-          title="Arrears by Building"
-          data={data.arrears_by_building}
-          isLoading={isLoading}
-          barClass="bg-red-500"
-          emptyText="No outstanding balances — every owner is settled up."
-        />
-      </div>
-
-      {/* Activity + reminders */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <ActivityPanel
-          upcomingDues={data.upcoming_dues}
-          recentPayments={data.recent_payments}
-          isLoading={isLoading}
-        />
-        <RemindersPanel reminders={reminders} isLoading={isLoading} />
-      </div>
-    </div>
+    <UnitAdminView
+      data={data}
+      reminders={reminders}
+      topPayers={topPayers}
+      isLoading={isLoading}
+      from={from}
+      to={to}
+      preset={preset}
+      onPresetChange={handlePresetChange}
+      onFromChange={handleFromChange}
+      onToChange={handleToChange}
+      onRefresh={handleRefresh}
+      revenueDelta={revenueDelta}
+    />
   );
 };
 
