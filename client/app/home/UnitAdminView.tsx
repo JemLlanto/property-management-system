@@ -60,10 +60,13 @@ const UnitAdminView = ({
 }: UnitAdminViewProps) => {
   const { metrics, comparison } = data;
 
+  // Mobile-first scaling shared with UnitOwnerView: tighter padding,
+  // radii and gaps on small screens, relaxing at md. The card shells
+  // themselves live in the shared dashboard components.
   return (
-    <div className="pt-2 pb-10 space-y-4">
+    <div className="pt-2 pb-5 md:pb-10 space-y-2 md:space-y-4">
       {/* Page heading */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-2 md:gap-3">
         <div>
           <h2 className="text-2xl font-semibold text-neutral-800 flex items-center gap-2">
             <Activity size={22} />
@@ -111,7 +114,7 @@ const UnitAdminView = ({
       />
 
       {/* Headline metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-2 md:gap-4">
         <MetricCard
           title="Revenue Collected"
           value={formatCurrency(metrics.total_revenue)}
@@ -173,7 +176,7 @@ const UnitAdminView = ({
       </div>
 
       {/* Chart + occupancy */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-2 md:gap-4">
         <div className="xl:col-span-2">
           <RevenueChart data={data.revenue_by_day} isLoading={isLoading} />
         </div>
@@ -188,7 +191,7 @@ const UnitAdminView = ({
       </div>
 
       {/* Breakdowns */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 md:gap-4">
         <BreakdownList
           title="Revenue by Bill"
           data={data.revenue_by_bill}
@@ -213,7 +216,7 @@ const UnitAdminView = ({
       </div>
 
       {/* Arrears */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 md:gap-4">
         <ArrearsTable owners={data.owners_in_arrears} isLoading={isLoading} />
         <BreakdownList
           title="Arrears by Building"
@@ -225,7 +228,7 @@ const UnitAdminView = ({
       </div>
 
       {/* Activity + reminders */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 md:gap-4">
         <ActivityPanel
           upcomingDues={data.upcoming_dues}
           recentPayments={data.recent_payments}
