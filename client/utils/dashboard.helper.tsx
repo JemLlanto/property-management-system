@@ -116,6 +116,33 @@ export const formatShortDate = (key: string) => {
   });
 };
 
+// A full ISO timestamp or date-only key rendered as "Nov. 30, 2026"
+export const formatReadableDate = (value: string | null | undefined) => {
+  if (!value) return "—";
+
+  const dateOnly = String(value).trim();
+  const match = /^\d{4}-\d{2}-\d{2}$/.exec(dateOnly);
+
+  if (match) {
+    const [year, month, day] = dateOnly.split("-").map(Number);
+    const monthName = new Date(year, month - 1, day).toLocaleDateString(
+      "en-US",
+      {
+        month: "short",
+      },
+    );
+
+    return `${monthName}. ${day}, ${year}`;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "—";
+
+  const monthName = date.toLocaleDateString("en-US", { month: "short" });
+  return `${monthName}. ${date.getDate()}, ${date.getFullYear()}`;
+};
+
 // A full ISO timestamp rendered as "Mar 5, 2026"
 export const formatTimestamp = (value: string | null | undefined) => {
   if (!value) return "—";

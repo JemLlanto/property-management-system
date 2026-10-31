@@ -4,7 +4,7 @@ import { checkUser } from "@/utils/auth.helper";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Activity, Banknote, TrendingUp, Users, Wallet } from "lucide-react";
-import { useAppDispatch } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setUser } from "@/store/userDataSlice";
 import {
   DashboardProps,
@@ -15,6 +15,7 @@ import { getReminders, OwnerReminderProps } from "@/services/reminder.service";
 import {
   formatCurrency,
   formatPercent,
+  formatReadableDate,
   startOfRange,
   todayKey,
 } from "@/utils/dashboard.helper";
@@ -154,6 +155,8 @@ const DashboardPage = () => {
   };
 
   const { metrics, comparison } = data;
+  const userData = useAppSelector((state) => state.userData);
+  const isUnitOwnerView = userData.type === "Unit Owner" || !userData.type;
 
   // Delta badge text vs the previous period. Null when there is no
   // meaningful comparison (e.g. no revenue in the prior window).
@@ -171,6 +174,31 @@ const DashboardPage = () => {
     comparison?.payment_count_change_percent,
   );
 
+  const ownerSummary = useMemo(() => {
+    const unitNumber = userData.unit_number || "—";
+    const ownerBalance =
+      data.owners_in_arrears.find((owner) => owner.unit_number === unitNumber)
+        ?.outstanding ?? 0;
+    const recentOwnerPayments = data.recent_payments.filter(
+      (payment) =>
+        payment.unit_number === unitNumber ||
+        payment.owner_name === (userData.name || userData.username),
+    );
+    const nextDue = data.upcoming_dues[0];
+
+    return {
+      unitNumber,
+      ownerBalance,
+      recentOwnerPayments,
+      nextDue,
+      buildingLabel:
+        recentOwnerPayments[0]?.building ||
+        (userData.building
+          ? `Building ${userData.building}`
+          : "Property Owner"),
+    };
+  }, [data, userData]);
+
   // Revenue per payer — ranked for the top payers list
   const topPayers = useMemo(
     () =>
@@ -183,6 +211,196 @@ const DashboardPage = () => {
       })),
     [data.top_payers],
   );
+
+  if (isUnitOwnerView) {
+    return (
+      <div className="pt-2 pb-10 space-y-4">
+        <div className="rounded-2xl bg-linear-to-r from-sky-600 via-cyan-600 to-indigo-600 p-5 text-white shadow-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-sm text-sky-100 uppercase tracking-wide">
+                Welcome back
+              </p>
+              <h2 className="mt-1 text-2xl font-semibold">
+                {userData.name || userData.email || "Unit Owner"}
+              </h2>
+            </div>
+            <div className="rounded-xl bg-white/10 px-3 py-2 text-sm backdrop-blur-sm">
+              <span className="font-medium">Unit</span>{" "}
+              {ownerSummary.unitNumber} · {ownerSummary.buildingLabel}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              Outstanding balance
+            </p>
+            <p className="mt-3 text-2xl font-bold text-neutral-800">
+              {formatCurrency(ownerSummary.ownerBalance)}
+            </p>
+            <p className="mt-2 text-sm text-neutral-500">
+              Current amount due for your unit
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              Next due
+            </p>
+            <p className="mt-3 text-2xl font-bold text-neutral-800">
+              {ownerSummary.nextDue
+                ? formatCurrency(ownerSummary.nextDue.amount)
+                : "₱0.00"}
+            </p>
+            <p className="mt-2 text-sm text-neutral-500">
+              {ownerSummary.nextDue
+                ? `${ownerSummary.nextDue.name} · ${formatReadableDate(ownerSummary.nextDue.due_date)}`
+                : "No bill scheduled"}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              Last payment
+            </p>
+            <p className="mt-3 text-2xl font-bold text-neutral-800">
+              {ownerSummary.recentOwnerPayments[0]
+                ? formatCurrency(ownerSummary.recentOwnerPayments[0].amount)
+                : "₱0.00"}
+            </p>
+            <p className="mt-2 text-sm text-neutral-500">
+              {ownerSummary.recentOwnerPayments[0]
+                ? `${ownerSummary.recentOwnerPayments[0].bill_name} · ${formatReadableDate(ownerSummary.recentOwnerPayments[0].paid_at)}`
+                : "No recent payment recorded"}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              Status
+            </p>
+            <p className="mt-3 text-2xl font-bold text-emerald-600">
+              {ownerSummary.ownerBalance > 0 ? "Due" : "Current"}
+            </p>
+            <p className="mt-2 text-sm text-neutral-500">
+              {ownerSummary.ownerBalance > 0
+                ? "Please settle your outstanding balance"
+                : "Your account is up to date"}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <h3 className="text-lg font-semibold text-neutral-800">
+              Upcoming dues
+            </h3>
+            <div className="mt-4 space-y-3">
+              {data.upcoming_dues.slice(0, 4).map((due) => (
+                <div
+                  key={due.bill_id}
+                  className="flex items-center justify-between rounded-lg border border-neutral-200 px-3 py-2"
+                >
+                  <div>
+                    <p className="font-medium text-neutral-800">{due.name}</p>
+                    <p className="text-sm text-neutral-500">
+                      {formatReadableDate(due.due_date)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-neutral-800">
+                      {formatCurrency(due.amount)}
+                    </p>
+                    <p className="text-xs text-neutral-500">
+                      {due.owners_affected} owner
+                      {due.owners_affected === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {data.upcoming_dues.length === 0 && (
+                <p className="text-sm text-neutral-500">
+                  No upcoming dues available.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <h3 className="text-lg font-semibold text-neutral-800">
+              Recent payments
+            </h3>
+            <div className="mt-4 space-y-3">
+              {ownerSummary.recentOwnerPayments.slice(0, 4).map((payment) => (
+                <div
+                  key={payment.payment_id}
+                  className="flex items-center justify-between rounded-lg border border-neutral-200 px-3 py-2"
+                >
+                  <div>
+                    <p className="font-medium text-neutral-800">
+                      {payment.bill_name}
+                    </p>
+                    <p className="text-sm text-neutral-500">
+                      {formatReadableDate(payment.paid_at)}
+                    </p>
+                  </div>
+                  <p className="font-semibold text-emerald-600">
+                    {formatCurrency(payment.amount)}
+                  </p>
+                </div>
+              ))}
+              {ownerSummary.recentOwnerPayments.length === 0 && (
+                <p className="text-sm text-neutral-500">
+                  No payments recorded yet.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <h3 className="text-lg font-semibold text-neutral-800">
+              Account snapshot
+            </h3>
+            <div className="mt-4 space-y-3 text-sm text-neutral-600">
+              <div className="flex justify-between border-b border-neutral-100 pb-2">
+                <span>Unit number</span>
+                <span className="font-medium text-neutral-800">
+                  {ownerSummary.unitNumber}
+                </span>
+              </div>
+              <div className="flex justify-between border-b border-neutral-100 pb-2">
+                <span>Building</span>
+                <span className="font-medium text-neutral-800">
+                  {ownerSummary.buildingLabel}
+                </span>
+              </div>
+              <div className="flex justify-between border-b border-neutral-100 pb-2">
+                <span>Collections in period</span>
+                <span className="font-medium text-neutral-800">
+                  {formatCurrency(metrics.total_revenue)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Reminders</span>
+                <span className="font-medium text-neutral-800">
+                  {reminders.length}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <RemindersPanel
+            reminders={reminders.slice(0, 4)}
+            isLoading={isLoading}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-2 pb-10 space-y-4">
