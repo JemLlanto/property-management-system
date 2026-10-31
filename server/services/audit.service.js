@@ -1,4 +1,5 @@
 const prisma = require("../lib/prisma");
+const { buildSearchWhere } = require("../utils/pagination");
 
 // Append-only audit trail. Logs are never updated or deleted — a record of
 // edits is worthless if the actor can rewrite it, so this module exposes
@@ -65,13 +66,16 @@ async function recordAudit({
   }
 }
 
-// List audit entries, newest first, with simple pagination.
-// Query params: page (1-based), pageSize (max 100), entity_type, actor_id.
+// List audit entries, newest first, with pagination and an optional
+// search term (actor name/id, action, entity or summary).
+// Query params: page (1-based), pageSize (max 100), entity_type,
+// actor_id, search.
 async function getAuditLogs({
   page = 1,
   pageSize = 50,
   entity_type = null,
   actor_id = null,
+  search = null,
 } = {}) {
   const size = Math.min(Math.max(Number(pageSize) || 50, 1), 100);
   const current = Math.max(Number(page) || 1, 1);
@@ -79,6 +83,13 @@ async function getAuditLogs({
   const where = {
     ...(entity_type ? { entity_type } : {}),
     ...(actor_id ? { actor_id } : {}),
+    ...buildSearchWhere(search, {
+      actor_name: "contains",
+      actor_id: "contains",
+      action: "contains",
+      entity_type: "contains",
+      summary: "contains",
+    }),
   };
 
   const [logs, total] = await Promise.all([

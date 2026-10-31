@@ -6,13 +6,14 @@ const { getAuditLogs } = require("../services/audit.service");
 // reconstructed.
 async function getAuditTrail(req, res) {
   try {
-    const { page, pageSize, entity_type, actor_id } = req.query;
+    const { page, pageSize, entity_type, actor_id, search } = req.query;
 
     const result = await getAuditLogs({
       page,
       pageSize,
       entity_type,
       actor_id,
+      search,
     });
 
     return res.json({ success: true, ...result });

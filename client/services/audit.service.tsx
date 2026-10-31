@@ -31,18 +31,20 @@ export interface AuditTrailResultProps {
   total_pages: number;
 }
 
-// Load a page of the audit trail. Both filters are optional.
+// Load a page of the audit trail. All filters are optional.
 export const getAuditTrail = async (
   {
     page = 1,
     pageSize = 50,
     entity_type,
     actor_id,
+    search,
   }: {
     page?: number;
     pageSize?: number;
     entity_type?: string;
     actor_id?: string;
+    search?: string;
   } = {},
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
 ): Promise<AuditTrailResultProps> => {
@@ -56,6 +58,7 @@ export const getAuditTrail = async (
 
   if (entity_type) params.set("entity_type", entity_type);
   if (actor_id) params.set("actor_id", actor_id);
+  if (search) params.set("search", search);
 
   try {
     const response = await authFetch(
