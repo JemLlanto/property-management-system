@@ -71,6 +71,9 @@ export interface DashboardMetricsProps {
   building_count: number;
   bill_count: number;
   collection_rate: number;
+  total_expenses: number;
+  expense_count: number;
+  net_cash_flow: number;
 }
 
 export interface DashboardRangeProps {

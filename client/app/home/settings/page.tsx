@@ -2,13 +2,14 @@
 
 import { checkUser } from "@/utils/auth.helper";
 import { changePassword } from "@/services/auth.service";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setUser } from "@/store/userDataSlice";
 import { setIsLoading } from "@/store/isLoading.slice";
-import { Eye, EyeClosed, KeyRound, User } from "lucide-react";
+import { Eye, EyeClosed, KeyRound, ShieldCheck, User } from "lucide-react";
 
 const SettingsPage = () => {
   const router = useRouter();
@@ -134,6 +135,24 @@ const SettingsPage = () => {
           <dt className="text-neutral-500">Unit Number</dt>
           <dd className="text-neutral-800">{userData.unit_number || "—"}</dd>
         </dl>
+      </section>
+
+      {/* Audit logs */}
+      <section className="w-full bg-white border border-gray-200 rounded-xl shadow-sm font-sans p-5">
+        <h3 className="text-lg font-semibold text-neutral-800 flex items-center gap-2 mb-1">
+          <ShieldCheck size={18} />
+          Audit Logs
+        </h3>
+        <p className="text-sm text-neutral-500 mb-4">
+          Review recent system changes, updates, and record activity.
+        </p>
+
+        <Link
+          href="/home/settings/audit-logs"
+          className="inline-flex items-center rounded-lg bg-neutral-900 text-white text-sm font-medium px-3.5 py-2 hover:bg-neutral-700 transition-colors"
+        >
+          View Audit Logs
+        </Link>
       </section>
 
       {/* Change password */}

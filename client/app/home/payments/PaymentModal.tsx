@@ -201,6 +201,12 @@ const PaymentModal = ({
       newErrors.amount = "Amount must be greater than 0";
     }
 
+    const repeatCount = Number(form.repeat_count ?? 1);
+
+    if (!Number.isInteger(repeatCount) || repeatCount < 1) {
+      newErrors.repeat_count = "Repeat count must be at least 1";
+    }
+
     if (form.paid_at) {
       const chosen = new Date(`${form.paid_at}T00:00:00`);
 
@@ -228,11 +234,20 @@ const PaymentModal = ({
         bill_id: form.bill_id,
         paid_by_id: form.paid_by_id,
         amount: Number(form.amount),
+        repeat_count: Number(form.repeat_count ?? 1),
         paid_at: form.paid_at,
       });
 
       if (response.success) {
-        setPayments((prev) => [response.payment, ...prev]);
+        const created = Array.isArray(response.payments)
+          ? response.payments
+          : response.payment
+            ? [response.payment]
+            : [];
+
+        if (created.length > 0) {
+          setPayments((prev) => [...created, ...prev]);
+        }
       }
     } catch (err) {
       console.error("Error Occurred: ", err);
@@ -328,6 +343,36 @@ const PaymentModal = ({
             <p className="text-xs text-neutral-400 mt-1">
               Partial payments are accepted — the remaining balance stays
               outstanding.
+            </p>
+          </div>
+
+          {/* Number of identical delayed payments to record in one action */}
+          <div>
+            <label className="block text-sm font-medium text-neutral-600 mb-1">
+              Delayed payment count <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={form.repeat_count}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  repeat_count:
+                    e.target.value === "" ? 1 : Number(e.target.value),
+                })
+              }
+              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800 ${
+                errors.repeat_count ? "border-red-400" : "border-neutral-300"
+              }`}
+              placeholder="1"
+            />
+            {errors.repeat_count && (
+              <p className="text-xs text-red-500 mt-1">{errors.repeat_count}</p>
+            )}
+            <p className="text-xs text-neutral-400 mt-1">
+              Enter how many delayed payments should be recorded for this bill.
             </p>
           </div>
 

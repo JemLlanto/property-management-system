@@ -20,22 +20,10 @@ model User {
   updated_at    DateTime? @updatedAt @map("updated_at")
 
   payments_recorded Payment[] @relation("RecordedBy")
+  expenses_recorded Expense[] @relation("RecordedExpenseBy")
 
   @@index([building])
   @@map("users")
-}
-
-model Item {
-  item_id    Int       @id @default(autoincrement()) @map("item_id")
-  name       String
-  user_id    String    @map("user_id")
-  quantity   Int
-  price      Decimal   @db.Decimal(10, 2)
-  created_at DateTime? @default(now()) @map("created_at")
-  updated_at DateTime? @default(now()) @updatedAt @map("updated_at")
-
-  @@index([user_id])
-  @@map("item")
 }
 
 model Building {
@@ -106,6 +94,23 @@ model Payment {
   // Cycle lookups are always scoped to one payer AND one bill.
   @@index([paid_by_id, bill_id, cycle_index])
   @@map("payment")
+}
+
+model Expense {
+  expense_id      Int       @id @default(autoincrement()) @map("expense_id")
+  reason          String    @map("reason") @db.VarChar(100)
+  amount          Decimal   @db.Decimal(10, 2)
+  description     String?   @map("description") @db.Text
+  occurred_at     DateTime  @default(now()) @map("occurred_at")
+  recorded_by_id  String?   @map("recorded_by_id") @db.VarChar(12)
+  created_at      DateTime? @default(now()) @map("created_at")
+  updated_at      DateTime? @default(now()) @updatedAt @map("updated_at")
+
+  recordedBy User? @relation("RecordedExpenseBy", fields: [recorded_by_id], references: [user_id], onDelete: SetNull)
+
+  @@index([recorded_by_id])
+  @@index([occurred_at])
+  @@map("expense")
 }
 
 // Append-only audit trail. Every create/update/delete of a bill, payment,

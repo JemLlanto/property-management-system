@@ -12,15 +12,17 @@ const SideBar = () => {
   const navLinks = [
     { name: "Dashboard", href: "/home" },
     { name: "Payments", href: "/home/payments" },
+    { name: "Expenses", href: "/home/expenses" },
     { name: "User Management", href: "/home/user-management" },
     { name: "Building Management", href: "/home/building-management" },
     { name: "Bills Management", href: "/home/bills-management" },
+    { name: "Audit Logs", href: "/home/settings/audit-logs" },
     { name: "Settings", href: "/home/settings" },
   ];
 
   return (
     <>
-      <nav className="h-full w-70 bg-cyan-400">
+      <nav className="h-full w-70 hidden md:block bg-cyan-400">
         <ul className="h-full w-full bg-(--foreground)/90 text-(--background) flex flex-col items-center gap-2 p-3 pt-20">
           {navLinks.map((link) => (
             <li className="w-full flex" key={link.href}>

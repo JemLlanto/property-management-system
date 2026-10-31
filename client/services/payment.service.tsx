@@ -35,6 +35,8 @@ export interface PaymentFormDataProps {
   // The payer's UNIT NUMBER — stored directly on the payment
   paid_by_id: string;
   amount: number | string | null;
+  // Number of identical payment entries to create in one action.
+  repeat_count: number | string;
   // Optional payment date (YYYY-MM-DD) — blank means "today". Allows
   // backdating when money was received before it was recorded.
   paid_at: string;
@@ -44,6 +46,7 @@ export const emptyPaymentForm: PaymentFormDataProps = {
   bill_id: null,
   paid_by_id: "",
   amount: null,
+  repeat_count: 1,
   paid_at: "",
 };
 
@@ -302,6 +305,7 @@ export const createPayment = async (
       bill_id: formData.bill_id,
       paid_by_id: formData.paid_by_id,
       amount: Number(formData.amount),
+      repeat_count: Math.max(1, Number(formData.repeat_count ?? 1)),
       ...(formData.paid_at ? { paid_at: formData.paid_at } : {}),
     },
     timeoutMs,

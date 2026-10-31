@@ -114,7 +114,7 @@ const UserDetailsModal = ({ user, buildings, onClose, onEdit }: ModalProps) => {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-xl shadow-lg w-150 p-6 relative max-h-[90vh] overflow-y-auto"
       >
         <button
           onClick={onClose}

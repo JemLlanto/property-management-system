@@ -1,8 +1,5 @@
 const prisma = require("../lib/prisma");
-const {
-  buildSearchWhere,
-  buildSortOrder,
-} = require("../utils/pagination");
+const { buildSearchWhere, buildSortOrder } = require("../utils/pagination");
 const {
   EPSILON,
   endOfMonth,
@@ -149,9 +146,10 @@ function parsePayment(payment) {
   };
 }
 
-// Validate and create a payment record.
-// Accepts an optional paid_at (backdating) and an optional cycle_index —
-// when omitted, the payment auto-allocates to the oldest unsettled cycle.
+// Validate and create one or more payment records.
+// When repeat_count > 1, the same payment payload is created that many
+// times in a single request. This is simpler and safer than looping from
+// the client and makes the audit trail consistent.
 async function createPayment({
   bill_id,
   paid_by_id,
@@ -159,6 +157,7 @@ async function createPayment({
   amount,
   paid_at,
   cycle_index,
+  repeat_count = 1,
 }) {
   const bill = await prisma.bill.findUnique({
     where: { bill_id: Number(bill_id) },
@@ -275,27 +274,54 @@ async function createPayment({
     }
   }
 
-  const payment = await prisma.payment.create({
-    data: {
-      bill_id: Number(bill_id),
-      paid_by_id: String(paid_by_id),
-      recorded_by_id: String(recorded_by_id),
-      amount: parsed,
-      cycle_index: resolvedCycleIndex,
-      amount_due: resolvedCycleIndex != null ? amountDue : null,
-      paid_at: paidAt,
-    },
-    include: {
-      bill: {
-        select: { bill_id: true, name: true, due_date: true, amount: true },
-      },
-      recordedBy: {
-        select: { user_id: true, name: true, email: true },
-      },
-    },
-  });
+  const repeatTotal = Math.max(1, Number(repeat_count) || 1);
+  const created = [];
+  const startingCycleIndex =
+    cycle_index !== undefined && cycle_index !== null && cycle_index !== ""
+      ? Number(cycle_index)
+      : resolvedCycleIndex;
 
-  return parsePayment(payment);
+  if (startingCycleIndex != null && cycles.length > 0) {
+    const maxAllowedCycle = cycles[cycles.length - 1].index;
+
+    for (let offset = 0; offset < repeatTotal; offset += 1) {
+      const candidateIndex = startingCycleIndex + offset;
+      if (candidateIndex > maxAllowedCycle) {
+        throw new Error(
+          "Repeat count exceeds the available missed cycles for this payment date",
+        );
+      }
+    }
+  }
+
+  for (let index = 0; index < repeatTotal; index += 1) {
+    const paymentCycleIndex =
+      startingCycleIndex != null ? startingCycleIndex + index : null;
+
+    const payment = await prisma.payment.create({
+      data: {
+        bill_id: Number(bill_id),
+        paid_by_id: String(paid_by_id),
+        recorded_by_id: String(recorded_by_id),
+        amount: parsed,
+        cycle_index: paymentCycleIndex,
+        amount_due: paymentCycleIndex != null ? amountDue : null,
+        paid_at: paidAt,
+      },
+      include: {
+        bill: {
+          select: { bill_id: true, name: true, due_date: true, amount: true },
+        },
+        recordedBy: {
+          select: { user_id: true, name: true, email: true },
+        },
+      },
+    });
+
+    created.push(parsePayment(payment));
+  }
+
+  return created.length === 1 ? created[0] : created;
 }
 
 async function deletePayment(payment_id) {

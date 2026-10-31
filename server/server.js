@@ -5,11 +5,11 @@ const cookieParser = require("cookie-parser");
 const cors = require("cors");
 
 const authRoutes = require("./routes/auth.route");
-const itemRoutes = require("./routes/item.route");
 const userRoutes = require("./routes/user.route");
 const buildingRoutes = require("./routes/building.route");
 const billRoutes = require("./routes/bill.route");
 const paymentRoutes = require("./routes/payment.route");
+const expenseRoutes = require("./routes/expense.route");
 const dashboardRoutes = require("./routes/dashboard.route");
 const auditRoutes = require("./routes/audit.route");
 const reminderRoutes = require("./routes/reminder.route");
@@ -29,11 +29,11 @@ app.use(
 );
 
 app.use("/api/auth", authRoutes);
-app.use("/api/item", itemRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/buildings", buildingRoutes);
 app.use("/api/bills", billRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/expenses", expenseRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/reminders", reminderRoutes);

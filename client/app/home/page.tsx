@@ -53,6 +53,9 @@ const EMPTY_DASHBOARD: DashboardProps = {
     building_count: 0,
     bill_count: 0,
     collection_rate: 0,
+    total_expenses: 0,
+    expense_count: 0,
+    net_cash_flow: 0,
   },
   revenue_by_day: [],
   revenue_by_bill: [],
@@ -257,6 +260,14 @@ const DashboardPage = () => {
               </span>
             </span>
           }
+          loading={isLoading}
+        />
+        <MetricCard
+          title="Net Cash Flow"
+          value={formatCurrency(metrics.net_cash_flow)}
+          icon={Wallet}
+          accent="text-amber-700 bg-amber-50"
+          hint={`${formatCurrency(metrics.total_expenses)} expenses in period`}
           loading={isLoading}
         />
         <MetricCard

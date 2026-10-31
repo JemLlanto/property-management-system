@@ -52,32 +52,42 @@ async function getPayments(req, res) {
 // Record a payment
 async function createPayment(req, res) {
   try {
-    const { bill_id, paid_by_id, amount, paid_at, cycle_index } = req.body;
+    const { bill_id, paid_by_id, amount, paid_at, cycle_index, repeat_count } =
+      req.body;
 
-    const payment = await Payment.createPayment({
+    const created = await Payment.createPayment({
       bill_id,
       paid_by_id,
       recorded_by_id: req.user.user_id,
       amount,
       paid_at,
       cycle_index,
+      repeat_count,
     });
 
-    await recordAudit({
-      actor: req.user,
-      action: "create",
-      entity_type: "payment",
-      entity_id: payment.payment_id,
-      summary: `Payment recorded for unit ${paid_by_id} — ₱${Number(
-        amount,
-      ).toFixed(2)} (${payment.bill_name ?? "bill"})`,
-      after: payment,
-    });
+    const createdPayments = Array.isArray(created) ? created : [created];
+
+    for (const payment of createdPayments) {
+      await recordAudit({
+        actor: req.user,
+        action: "create",
+        entity_type: "payment",
+        entity_id: payment.payment_id,
+        summary: `Payment recorded for unit ${paid_by_id} — ₱${Number(
+          amount,
+        ).toFixed(2)} (${payment.bill_name ?? "bill"})`,
+        after: payment,
+      });
+    }
 
     return res.status(201).json({
       success: true,
-      message: "Payment recorded successfully",
-      payment,
+      message:
+        createdPayments.length > 1
+          ? `Payment recorded successfully (${createdPayments.length} entries)`
+          : "Payment recorded successfully",
+      payment: createdPayments[0],
+      payments: createdPayments,
     });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });

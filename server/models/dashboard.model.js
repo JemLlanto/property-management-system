@@ -94,7 +94,7 @@ async function getDashboardSummary(from, to) {
   const prevEnd = new Date(start.getTime() - 1);
   const prevStart = new Date(prevEnd.getTime() - spanMs);
 
-  const [payments, bills, owners, buildings] = await Promise.all([
+  const [payments, bills, owners, buildings, expenses] = await Promise.all([
     prisma.payment.findMany({
       include: {
         bill: {
@@ -120,6 +120,9 @@ async function getDashboardSummary(from, to) {
     prisma.building.findMany({
       orderBy: { building_id: "asc" },
     }),
+    prisma.expense.findMany({
+      orderBy: [{ occurred_at: "asc" }, { expense_id: "asc" }],
+    }),
   ]);
 
   const days = enumerateDays(start, end);
@@ -127,6 +130,11 @@ async function getDashboardSummary(from, to) {
     const paidAt = new Date(p.paid_at);
 
     return paidAt >= start && paidAt <= end;
+  });
+  const expensesInRange = expenses.filter((expense) => {
+    const spentAt = new Date(expense.occurred_at);
+
+    return spentAt >= start && spentAt <= end;
   });
 
   // Lookup maps so the aggregation below stays linear
@@ -171,6 +179,20 @@ async function getDashboardSummary(from, to) {
 
   // Average daily revenue — only counting days inside the window
   const averageDailyRevenue = days.length ? totalRevenue / days.length : 0;
+
+  // ---------- Expenses / Cash Flow ----------
+  let totalExpenses = 0;
+  const expensesByReason = new Map();
+
+  for (const expense of expensesInRange) {
+    const amount = Number(expense.amount ?? 0);
+    totalExpenses += amount;
+
+    const reason = expense.reason ?? "Other";
+    expensesByReason.set(reason, (expensesByReason.get(reason) ?? 0) + amount);
+  }
+
+  const netCashFlow = totalRevenue - totalExpenses;
 
   // ---------- Outstanding (arrears) ----------
   // Uses the same value-based cycle rule as the payment model: a cycle is
@@ -373,6 +395,9 @@ async function getDashboardSummary(from, to) {
         totalRevenue + totalOutstanding > 0
           ? (totalRevenue / (totalRevenue + totalOutstanding)) * 100
           : 0,
+      total_expenses: totalExpenses,
+      expense_count: expensesInRange.length,
+      net_cash_flow: netCashFlow,
     },
     revenue_by_day: days.map((day) => ({
       date: day,
@@ -396,6 +421,18 @@ async function getDashboardSummary(from, to) {
     ),
     upcoming_dues: upcomingDues,
     recent_payments: recentPayments,
+    recent_expenses: [...expensesInRange]
+      .sort((a, b) => new Date(b.occurred_at) - new Date(a.occurred_at))
+      .slice(0, 8)
+      .map((expense) => ({
+        expense_id: expense.expense_id,
+        reason: expense.reason,
+        amount: Number(expense.amount ?? 0),
+        occurred_at: expense.occurred_at,
+      })),
+    expenses_by_reason: [...expensesByReason.entries()]
+      .map(([name, amount]) => ({ name, amount: Number(amount) }))
+      .sort((a, b) => b.amount - a.amount),
   };
 }
 
