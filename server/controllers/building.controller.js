@@ -1,4 +1,5 @@
 const Building = require("../models/building.model");
+const { recordAudit } = require("../services/audit.service");
 
 // List all buildings
 async function getBuildings(req, res) {
@@ -40,6 +41,15 @@ async function createBuilding(req, res) {
       capacity: Number(capacity),
     });
 
+    await recordAudit({
+      actor: req.user,
+      action: "create",
+      entity_type: "building",
+      entity_id: building.building_id,
+      summary: `Building "${building.name}" created (capacity ${building.capacity})`,
+      after: building,
+    });
+
     return res.status(201).json({
       success: true,
       message: "Building created successfully",
@@ -77,6 +87,16 @@ async function updateBuilding(req, res) {
       capacity,
     });
 
+    await recordAudit({
+      actor: req.user,
+      action: "update",
+      entity_type: "building",
+      entity_id: building.building_id,
+      summary: `Building "${building.name}" updated`,
+      before: existing,
+      after: building,
+    });
+
     return res.json({
       success: true,
       message: "Building updated successfully",
@@ -99,6 +119,8 @@ async function deleteBuilding(req, res) {
   try {
     const { building_id } = req.params;
 
+    const existing = await Building.findById(building_id);
+
     const deleted = await Building.deleteBuilding(building_id);
 
     if (deleted === null) {
@@ -106,6 +128,15 @@ async function deleteBuilding(req, res) {
         .status(404)
         .json({ success: false, message: "Building not found" });
     }
+
+    await recordAudit({
+      actor: req.user,
+      action: "delete",
+      entity_type: "building",
+      entity_id: building_id,
+      summary: `Building "${existing?.name ?? building_id}" deleted`,
+      before: existing,
+    });
 
     return res.json({
       success: true,

@@ -64,6 +64,14 @@ async function updateBuilding(building_id, { name, capacity }) {
   });
 }
 
+// Find a building by its id — used to capture the "before" state for the
+// audit trail before an update overwrites it.
+async function findById(building_id) {
+  return prisma.building.findUnique({
+    where: { building_id: Number(building_id) },
+  });
+}
+
 // Find a building and validate it can accept another occupant
 async function findOccupiable(building_id) {
   const building = await prisma.building.findUnique({
@@ -110,6 +118,7 @@ async function deleteBuilding(building_id) {
 module.exports = {
   getAllBuildings,
   findByName,
+  findById,
   findOccupiable,
   adjustOccupants,
   createBuilding,

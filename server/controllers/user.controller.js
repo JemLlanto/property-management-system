@@ -1,5 +1,7 @@
 const User = require("../models/user.model");
 const Building = require("../models/building.model");
+const { recordAudit } = require("../services/audit.service");
+const { parsePagination, paginationMeta } = require("../utils/pagination");
 
 // Normalises the building reference coming from the client
 function parseBuilding(value) {
@@ -16,13 +18,41 @@ function parseBuilding(value) {
   return buildingId;
 }
 
-// List all users (any authenticated user can view; tighten with role checks
-// later if needed)
+// List users. Supports ?page=&pageSize=&search=&type= — omitting all of
+// them returns the full list (legacy behaviour for dropdowns that need
+// every owner).
 async function getUsers(req, res) {
   try {
-    const users = await User.getAllUsers();
+    const supportsPagination =
+      req.query.page !== undefined ||
+      req.query.search !== undefined ||
+      req.query.type !== undefined ||
+      req.query.sort !== undefined;
 
-    return res.json({ success: true, users });
+    if (!supportsPagination) {
+      const users = await User.getAllUsers();
+
+      return res.json({ success: true, users });
+    }
+
+    const { page, pageSize, skip, take } = parsePagination(req.query);
+
+    const result = await User.getUsersPaginated({
+      page,
+      pageSize,
+      skip,
+      take,
+      search: req.query.search,
+      type: req.query.type,
+      sort: req.query.sort,
+      order: req.query.order,
+    });
+
+    return res.json({
+      success: true,
+      users: result.users,
+      ...paginationMeta(result),
+    });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
@@ -67,6 +97,15 @@ async function createUser(req, res) {
       });
     }
 
+    // Unit numbers must be unique
+    if (unit_number) {
+      try {
+        await User.assertUnitNumberAvailable(unit_number);
+      } catch (err) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
+    }
+
     // Unit Owners must be assigned to a building
     let buildingId = null;
 
@@ -105,6 +144,15 @@ async function createUser(req, res) {
       await Building.adjustOccupants(buildingId, 1);
     }
 
+    await recordAudit({
+      actor: req.user,
+      action: "create",
+      entity_type: "user",
+      entity_id: user.user_id,
+      summary: `User "${user.name ?? user.email}" created (${user.type})`,
+      after: user,
+    });
+
     return res.status(201).json({
       success: true,
       message: "User created successfully",
@@ -136,6 +184,15 @@ async function updateUser(req, res) {
         success: false,
         message: "Unit number is required for Unit Owner accounts",
       });
+    }
+
+    // Unit numbers must stay unique
+    if (unit_number !== undefined && unit_number) {
+      try {
+        await User.assertUnitNumberAvailable(unit_number, user_id);
+      } catch (err) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
     }
 
     const existing = await User.findById(user_id);
@@ -185,6 +242,16 @@ async function updateUser(req, res) {
       }
     }
 
+    await recordAudit({
+      actor: req.user,
+      action: "update",
+      entity_type: "user",
+      entity_id: user_id,
+      summary: `User "${user.name ?? user.email}" updated`,
+      before: existing,
+      after: user,
+    });
+
     return res.json({
       success: true,
       message: "User updated successfully",
@@ -216,6 +283,15 @@ async function deleteUser(req, res) {
     if (existing && existing.building) {
       await Building.adjustOccupants(existing.building, -1);
     }
+
+    await recordAudit({
+      actor: req.user,
+      action: "delete",
+      entity_type: "user",
+      entity_id: user_id,
+      summary: `User "${existing?.name ?? existing?.email ?? user_id}" deleted`,
+      before: existing,
+    });
 
     return res.json({ success: true, message: "User deleted successfully" });
   } catch (err) {

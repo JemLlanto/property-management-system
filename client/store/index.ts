@@ -1,14 +1,14 @@
 import { configureStore } from "@reduxjs/toolkit";
 import passwordReducer from "./passwordToggleSlice";
+import sideBarReducer from "./sidebarMobileToggleSlice";
 import userReducer from "./userDataSlice";
-import itemReducer from "./itemData.slice";
 import isLoadingReducer from "./isLoading.slice";
 
 export const store = configureStore({
   reducer: {
     password: passwordReducer,
+    sideBar: sideBarReducer,
     userData: userReducer,
-    itemData: itemReducer,
     loading: isLoadingReducer,
   },
 });

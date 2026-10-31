@@ -1,8 +1,8 @@
 import { ReactNode } from "react";
 import NavBar from "./NavBar";
 import { Metadata } from "next";
-import { Sidebar } from "lucide-react";
 import SideBar from "./SideBar";
+import SideBarMobile from "./SideBarMobile";
 
 interface Props {
   children: ReactNode;
@@ -13,21 +13,24 @@ interface Props {
 // string title here would wipe the template for those descendants.
 export const metadata: Metadata = {
   title: {
-    default: "Home",
+    default: "Dashboard",
     template: "%s | Property Management System",
   },
   description: "Property Management System",
 };
 const HomeLayout = ({ children }: Props) => {
   return (
-    <div className="h-dvh w-dvw flex overflow-auto">
-      <header className="absolute top-0 left-0 w-full min-h-15 bg-(--background) shadow flex flex-col justify-between items-center z-50">
+    <div className="relative h-dvh w-dvw flex overflow-auto">
+      <header className="absolute top-0 left-0 w-full bg-(--background) shadow flex flex-col justify-center items-center z-50">
         <NavBar />
       </header>
       <aside>
+        <SideBarMobile />
         <SideBar />
       </aside>
-      <main className="h-full w-full px-35 pt-20">{children}</main>
+      <main className="h-full w-full px-2 md:px-10 lg:px-35 pt-13.5 md:pt-20 overflow-y-auto overflow-x-hidden">
+        {children}
+      </main>
     </div>
   );
 };

@@ -3,6 +3,16 @@ const { customAlphabet } = require("nanoid");
 const { Decimal } = require("@prisma/client");
 
 const prisma = require("../lib/prisma");
+const { buildSearchWhere, buildSortOrder } = require("../utils/pagination");
+
+// Columns a client may sort the user list by, mapped to Prisma fields.
+const USER_SORT_COLUMNS = {
+  name: "name",
+  email: "email",
+  type: "type",
+  unit_number: "unit_number",
+  created_at: "created_at",
+};
 
 const USER_TYPES = ["Unit Owner", "Admin", "Super Admin"];
 
@@ -61,6 +71,41 @@ async function findById(user_id) {
   return parseUser(user);
 }
 
+// Find a user by their unit number
+async function findByUnitNumber(unit_number) {
+  if (!unit_number || !String(unit_number).trim()) {
+    return null;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { unit_number: String(unit_number).trim() },
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  return parseUser(user);
+}
+
+// Unit numbers must be unique across the system
+async function assertUnitNumberAvailable(unit_number, excludeUserId = null) {
+  if (!unit_number || !String(unit_number).trim()) {
+    return;
+  }
+
+  const existing = await prisma.user.findUnique({
+    where: { unit_number: String(unit_number).trim() },
+    select: { user_id: true },
+  });
+
+  if (existing && existing.user_id !== excludeUserId) {
+    throw new Error(
+      `Unit number "${String(unit_number).trim()}" is already taken`,
+    );
+  }
+}
+
 // Find a user by email, unit number, or display name. The login form
 // accepts any of the three as the identifier.
 async function findByIdentifier(identifier) {
@@ -87,6 +132,47 @@ async function findByIdentifier(identifier) {
 
 async function validatePassword(password, hashedPassword) {
   return bcrypt.compare(password, hashedPassword);
+}
+
+// Change a user's own password. Verifies the current password first so a
+// stolen session cannot lock the real owner out.
+async function changePassword(user_id, currentPassword, newPassword) {
+  if (!newPassword || String(newPassword).length < 8) {
+    throw new Error("New password must be at least 8 characters");
+  }
+
+  const user = await prisma.user.findUnique({ where: { user_id } });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const valid = await bcrypt.compare(currentPassword, user.password);
+
+  if (!valid) {
+    throw new Error("Current password is incorrect");
+  }
+
+  const sameAsOld = await bcrypt.compare(newPassword, user.password);
+
+  if (sameAsOld) {
+    throw new Error("New password must be different from the current one");
+  }
+
+  await prisma.user.update({
+    where: { user_id },
+    data: { password: await bcrypt.hash(newPassword, 10) },
+  });
+
+  // Every refresh token is revoked so other sessions are forced to log
+  // in again — a password change that leaves stolen sessions alive has
+  // not really secured anything.
+  await prisma.user.update({
+    where: { user_id },
+    data: { refresh_tokens: [] },
+  });
+
+  return true;
 }
 
 async function addRefreshToken(user, token) {
@@ -124,6 +210,54 @@ async function getAllUsers() {
   });
 
   return users.map(toPublicUser);
+}
+
+// A page of users, optionally filtered by a search term and a type.
+// Sortable via ?sort=<column>&order=asc|desc within USER_SORT_COLUMNS.
+async function getUsersPaginated({
+  page = 1,
+  pageSize = 50,
+  skip = 0,
+  take = 50,
+  search = "",
+  type = "",
+  sort = "",
+  order = "desc",
+} = {}) {
+  const where = {
+    ...(type ? { type } : {}),
+    ...buildSearchWhere(search, {
+      name: "contains",
+      email: "contains",
+      unit_number: "contains",
+    }),
+  };
+
+  // Newest first by default; sorting by unit_number puts the nulls last
+  // so owners without a unit do not crowd the top.
+  const orderBy = buildSortOrder(sort, order, USER_SORT_COLUMNS, {
+    fallback: [{ created_at: "desc" }],
+    tiebreaker: { user_id: "asc" },
+  });
+
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      orderBy,
+      skip,
+      take,
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  return {
+    users: users.map(toPublicUser),
+    total,
+    page,
+    pageSize,
+    total_pages: Math.ceil(total / pageSize),
+    has_more: page * pageSize < total,
+  };
 }
 
 // Admin-facing create: generates a temporary password and returns it once.
@@ -177,6 +311,9 @@ async function createUserByAdmin({ email, type, name, unit_number, building }) {
     throw new Error("A user with this email already exists");
   }
 
+  // Unit numbers must be unique
+  await assertUnitNumberAvailable(unit_number);
+
   // Generate a readable temporary password; the user can change it later.
   const tempPassword = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 10)();
 
@@ -213,7 +350,21 @@ async function updateUser(
     data.type = type;
   }
   if (name !== undefined) data.name = name;
-  if (unit_number !== undefined) data.unit_number = unit_number;
+
+  // Unit numbers only belong to Unit Owner accounts — switching type away
+  // from Unit Owner clears the value instead of keeping a stale one.
+  if (unit_number !== undefined) {
+    data.unit_number =
+      type === undefined || type === "Unit Owner" ? unit_number : null;
+  } else if (type !== undefined && type !== "Unit Owner") {
+    data.unit_number = null;
+  }
+
+  // Unit numbers must stay unique
+  if (data.unit_number) {
+    await assertUnitNumberAvailable(data.unit_number, user_id);
+  }
+
   if (building !== undefined) data.building = building;
 
   const user = await prisma.user.update({
@@ -262,12 +413,16 @@ module.exports = {
   createUser,
   createUserByAdmin,
   getAllUsers,
+  getUsersPaginated,
   updateUser,
   deleteUser,
   findByEmail,
   findById,
+  findByUnitNumber,
+  assertUnitNumberAvailable,
   findByIdentifier,
   validatePassword,
+  changePassword,
   addRefreshToken,
   removeRefreshToken,
   hasRefreshToken,

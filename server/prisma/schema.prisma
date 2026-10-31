@@ -13,27 +13,17 @@ model User {
   password      String
   type          String   @default("Unit Owner") @map("type") @db.VarChar(20)
   name          String?  @map("name") @db.VarChar(100)
-  unit_number   String?  @map("unit_number") @db.VarChar(20)
+  unit_number   String?  @unique @map("unit_number") @db.VarChar(20)
   building      Int?     @map("building")
   refresh_tokens Json    @default("[]")
   created_at    DateTime? @default(now()) @map("created_at")
   updated_at    DateTime? @updatedAt @map("updated_at")
 
+  payments_recorded Payment[] @relation("RecordedBy")
+  expenses_recorded Expense[] @relation("RecordedExpenseBy")
+
   @@index([building])
   @@map("users")
-}
-
-model Item {
-  item_id    Int       @id @default(autoincrement()) @map("item_id")
-  name       String
-  user_id    String    @map("user_id")
-  quantity   Int
-  price      Decimal   @db.Decimal(10, 2)
-  created_at DateTime? @default(now()) @map("created_at")
-  updated_at DateTime? @default(now()) @updatedAt @map("updated_at")
-
-  @@index([user_id])
-  @@map("item")
 }
 
 model Building {
@@ -48,27 +38,105 @@ model Building {
   @@map("building")
 }
 
-model Stock {
-  id    Int    @id @default(autoincrement())
-  name  String @db.VarChar(100)
-  specs String @db.VarChar(100)
+model Bill {
+  bill_id    Int      @id @default(autoincrement()) @map("bill_id")
+  name       String   @map("name") @db.VarChar(100)
+  due_date   String   @map("due_date") @db.VarChar(20)
+  amount     Decimal  @db.Decimal(10, 2)
+  // Optional discount applied to every cycle of this bill, expressed as a
+  // percentage (e.g. 10 = 10% off). Null or 0 means no discount.
+  discount_percent Decimal @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  // Late fee charged on each missed cycle. Fixed amount per cycle.
+  late_fee_amount   Decimal @default(0) @map("late_fee_amount") @db.Decimal(10, 2)
+  // Grace period in days after a cycle deadline before the late fee
+  // applies. 0 means the fee is charged from the deadline onward.
+  late_fee_grace_days Int    @default(0) @map("late_fee_grace_days")
+  // Whether the late fee is a flat amount per missed cycle or a
+  // percentage of the cycle amount ("fixed" | "percent").
+  late_fee_type      String  @default("fixed") @map("late_fee_type") @db.VarChar(10)
+  created_at DateTime? @default(now()) @map("created_at")
+  updated_at DateTime? @default(now()) @updatedAt @map("updated_at")
 
-  @@map("stocks")
+  payments Payment[]
+
+  @@map("bill")
 }
 
-model StockItem {
-  id           Int       @id @default(autoincrement())
-  stockId      Int       @map("stockId")
-  serialNumber String?   @map("serialNumber") @db.VarChar(100)
-  specs        String?   @db.Text
-  PRDate       String?   @map("PRDate") @db.VarChar(100)
-  receivedDate DateTime? @map("receivedDate") @db.Date
-  deployedDate DateTime? @map("deployedDate") @db.Date
-  station      String?   @db.VarChar(100)
-  department   String?   @db.VarChar(100)
-  remarks      String?   @db.VarChar(100)
+model Payment {
+  payment_id    Int       @id @default(autoincrement()) @map("payment_id")
+  bill_id       Int       @map("bill_id")
+  // Unit number of the payer at payment time — a plain value, not a FK, so
+  // history survives the payer's account being edited or deleted.
+  paid_by_id    String?   @map("paid_by_id") @db.VarChar(20)
+  recorded_by_id String?  @map("recorded_by_id") @db.VarChar(12)
+  amount        Decimal   @db.Decimal(10, 2)
+  // The cycle this payment settles. Null means the payment is not tied to
+  // a specific cycle (a lump-sum credit). Multiple partial payments can
+  // share a cycle — they are summed, and the cycle is only settled once
+  // the total reaches the amount due.
+  cycle_index   Int?      @map("cycle_index")
+  // The amount due for that cycle at the time of payment, so a later bill
+  // edit does not retroactively change what was owed.
+  amount_due    Decimal?  @map("amount_due") @db.Decimal(10, 2)
+  paid_at       DateTime  @default(now()) @map("paid_at")
+  created_at    DateTime? @default(now()) @map("created_at")
+  updated_at    DateTime? @default(now()) @updatedAt @map("updated_at")
 
-  @@index([stockId])
-  @@map("stock_items")
+  bill       Bill   @relation(fields: [bill_id], references: [bill_id])
+  recordedBy User?  @relation("RecordedBy", fields: [recorded_by_id], references: [user_id], onDelete: SetNull)
+
+  @@index([bill_id])
+  @@index([paid_by_id])
+  @@index([recorded_by_id])
+  // The dashboard range filter and history ordering both filter/sort on
+  // paid_at — without this index every query is a full table scan.
+  @@index([paid_at])
+  // Cycle lookups are always scoped to one payer AND one bill.
+  @@index([paid_by_id, bill_id, cycle_index])
+  @@map("payment")
+}
+
+model Expense {
+  expense_id      Int       @id @default(autoincrement()) @map("expense_id")
+  reason          String    @map("reason") @db.VarChar(100)
+  amount          Decimal   @db.Decimal(10, 2)
+  description     String?   @map("description") @db.Text
+  occurred_at     DateTime  @default(now()) @map("occurred_at")
+  recorded_by_id  String?   @map("recorded_by_id") @db.VarChar(12)
+  created_at      DateTime? @default(now()) @map("created_at")
+  updated_at      DateTime? @default(now()) @updatedAt @map("updated_at")
+
+  recordedBy User? @relation("RecordedExpenseBy", fields: [recorded_by_id], references: [user_id], onDelete: SetNull)
+
+  @@index([recorded_by_id])
+  @@index([occurred_at])
+  @@map("expense")
+}
+
+// Append-only audit trail. Every create/update/delete of a bill, payment,
+// user or building is recorded here with the actor, the action and the
+// before/after state. Rows are never updated or deleted by the app.
+model AuditLog {
+  audit_id    Int       @id @default(autoincrement()) @map("audit_id")
+  // The user who performed the action (null if the account was deleted)
+  actor_id    String?   @map("actor_id") @db.VarChar(12)
+  actor_name  String?   @map("actor_name") @db.VarChar(100)
+  // "create" | "update" | "delete"
+  action      String    @map("action") @db.VarChar(20)
+  // "bill" | "payment" | "user" | "building"
+  entity_type String    @map("entity_type") @db.VarChar(50)
+  entity_id   String?   @map("entity_id") @db.VarChar(64)
+  // Human-readable summary, e.g. "Payment recorded for unit 203-B"
+  summary     String?   @map("summary") @db.VarChar(255)
+  // The entity's state before the change (null for creates)
+  before_state Json?    @map("before_state")
+  // The entity's state after the change (null for deletes)
+  after_state  Json?    @map("after_state")
+  created_at   DateTime @default(now()) @map("created_at")
+
+  @@index([created_at])
+  @@index([entity_type, entity_id])
+  @@index([actor_id])
+  @@map("audit_log")
 }
 
