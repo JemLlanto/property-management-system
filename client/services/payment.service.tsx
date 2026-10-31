@@ -198,6 +198,8 @@ export interface PaymentListQueryProps {
   pageSize?: number;
   search?: string;
   bill_id?: number | string;
+  // Restrict the list to payments made by one unit owner
+  unit_number?: string;
   from?: string;
   to?: string;
   sort?: string;
@@ -218,6 +220,7 @@ export const getPaymentsPaginated = async (
   }
   if (query.search) params.set("search", query.search);
   if (query.bill_id) params.set("bill_id", String(query.bill_id));
+  if (query.unit_number) params.set("unit_number", query.unit_number);
   if (query.from) params.set("from", query.from);
   if (query.to) params.set("to", query.to);
   if (query.sort) params.set("sort", query.sort);

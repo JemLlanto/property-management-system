@@ -55,9 +55,11 @@ async function getPaymentsPaginated({
   to = null,
   sort = "",
   order = "desc",
+  unit_number = null,
 } = {}) {
   const where = {
     ...(bill_id ? { bill_id: Number(bill_id) } : {}),
+    ...(unit_number ? { paid_by_id: String(unit_number) } : {}),
     ...(from || to
       ? {
           paid_at: {

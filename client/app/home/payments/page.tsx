@@ -25,6 +25,12 @@ const PaymentsPage = () => {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const isLoading = useAppSelector((state) => state.loading.isLoading);
+  const userData = useAppSelector((state) => state.userData);
+
+  // Unit owners only ever see the payments recorded against their own
+  // unit — the list is filtered server-side by unit number.
+  const isUnitOwner = userData.type === "Unit Owner";
+  const ownerUnitNumber = userData.unit_number || "";
 
   const [payments, setPayments] = useState<PaymentDataProps[]>([]);
   const [bills, setBills] = useState<BillDataProps[]>([]);
@@ -70,13 +76,23 @@ const PaymentsPage = () => {
       page,
       pageSize,
       search,
+      ...(isUnitOwner && ownerUnitNumber
+        ? { unit_number: ownerUnitNumber }
+        : {}),
       ...sortable.sortParams,
     });
 
     setPayments(result.payments);
     setTotal(result.total);
     setTotalPages(result.total_pages);
-  }, [page, pageSize, search, sortable.sortParams]);
+  }, [
+    page,
+    pageSize,
+    search,
+    isUnitOwner,
+    ownerUnitNumber,
+    sortable.sortParams,
+  ]);
 
   // Checking user authorization and loading payments plus lookup data
   useEffect(() => {
@@ -179,6 +195,8 @@ const PaymentsPage = () => {
         searchInput={searchInput}
         setSearchInput={setSearchInput}
         sortable={{ ...sortable, toggleSort: handleSort }}
+        canRecordPayment={!isUnitOwner}
+        canDeletePayment={!isUnitOwner}
       />
 
       {/* Pagination */}
@@ -208,7 +226,7 @@ const PaymentsPage = () => {
       )}
 
       {/* Record Payment Modal */}
-      {isModalOpen && (
+      {isModalOpen && !isUnitOwner && (
         <PaymentModal
           bills={bills}
           unitOwners={unitOwners}

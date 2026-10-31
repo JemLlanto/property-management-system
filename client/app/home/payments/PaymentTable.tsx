@@ -20,6 +20,9 @@ interface TableProps {
   setSearchInput: (value: string) => void;
   // Column sorting lives in the table headers
   sortable: UseSortableColumnsResult;
+  // Unit owners view their own history — no recording or deleting
+  canRecordPayment?: boolean;
+  canDeletePayment?: boolean;
 }
 
 const PaymentTable = ({
@@ -32,6 +35,8 @@ const PaymentTable = ({
   searchInput,
   setSearchInput,
   sortable,
+  canRecordPayment = true,
+  canDeletePayment = true,
 }: TableProps) => {
   // Payments store the payer's unit number — look the owner up to show
   // their building and name.
@@ -52,28 +57,32 @@ const PaymentTable = ({
         </h3>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64 sm:flex-none">
-            <Search
-              size={15}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
-            />
-            <input
-              type="search"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search unit, bill or recorder..."
-              aria-label="Search payments"
-              className="w-full rounded-lg border border-neutral-300 bg-white pl-9 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800"
-            />
-          </div>
+          {canRecordPayment && (
+            <div className="relative flex-1 sm:w-64 sm:flex-none">
+              <Search
+                size={15}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+              />
+              <input
+                type="search"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search unit, bill or recorder..."
+                aria-label="Search payments"
+                className="w-full rounded-lg border border-neutral-300 bg-white pl-9 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-800"
+              />
+            </div>
+          )}
 
-          <button
-            onClick={openAddModal}
-            className="flex items-center gap-1.5 rounded-lg bg-neutral-900 text-white text-sm font-medium px-3.5 py-2 hover:bg-neutral-700 transition-colors shrink-0"
-          >
-            <Plus size={16} />
-            Record Payment
-          </button>
+          {canRecordPayment && (
+            <button
+              onClick={openAddModal}
+              className="flex items-center gap-1.5 rounded-lg bg-neutral-900 text-white text-sm font-medium px-3.5 py-2 hover:bg-neutral-700 transition-colors shrink-0"
+            >
+              <Plus size={16} />
+              Record Payment
+            </button>
+          )}
         </div>
       </div>
 
@@ -163,13 +172,15 @@ const PaymentTable = ({
                 {payment.paid_at ? formatDate(payment.paid_at) : "—"}
               </p>
               <div className="flex justify-end gap-1 w-20">
-                <button
-                  onClick={() => handleDelete(payment)}
-                  className="p-1.5 rounded-md text-neutral-500 hover:text-red-600 hover:bg-red-50 transition-colors"
-                  aria-label={`Delete payment for ${payment.bill_name ?? "bill"}`}
-                >
-                  <Trash2 size={16} />
-                </button>
+                {canDeletePayment && (
+                  <button
+                    onClick={() => handleDelete(payment)}
+                    className="p-1.5 rounded-md text-neutral-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    aria-label={`Delete payment for ${payment.bill_name ?? "bill"}`}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
             </div>
           );

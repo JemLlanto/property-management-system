@@ -5,15 +5,38 @@ const { parsePagination, paginationMeta } = require("../utils/pagination");
 
 // List payments. Supports ?page=&pageSize=&search=&bill_id=&from=&to= —
 // omitting all of them returns the full list (legacy behaviour).
+// Unit owners are ALWAYS restricted to their own unit's payments — the
+// server resolves their unit from the auth token and ignores any
+// unit_number the client passes, so the filter cannot be bypassed.
 async function getPayments(req, res) {
   try {
+    // Resolve the caller's role and unit once for scoping below.
+    const caller = await User.findById(req.user.user_id);
+    const isOwnerCaller = caller?.type === "Unit Owner";
+    const forcedUnitNumber = isOwnerCaller ? caller.unit_number : null;
+
+    if (isOwnerCaller && !forcedUnitNumber) {
+      // A unit owner without a unit number has no payments of their own.
+      return res.json({
+        success: true,
+        payments: [],
+        page: 1,
+        pageSize: 0,
+        total: 0,
+        total_pages: 0,
+        has_more: false,
+      });
+    }
+
     const supportsPagination =
       req.query.page !== undefined ||
       req.query.search !== undefined ||
       req.query.bill_id !== undefined ||
       req.query.from !== undefined ||
       req.query.to !== undefined ||
-      req.query.sort !== undefined;
+      req.query.sort !== undefined ||
+      req.query.unit_number !== undefined ||
+      isOwnerCaller;
 
     if (!supportsPagination) {
       const payments = await Payment.getAllPayments();
@@ -37,6 +60,8 @@ async function getPayments(req, res) {
       to: req.query.to,
       sort: req.query.sort,
       order: req.query.order,
+      // Server-side scoping wins over any client-supplied unit.
+      unit_number: forcedUnitNumber ?? req.query.unit_number ?? null,
     });
 
     return res.json({
