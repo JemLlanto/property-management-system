@@ -2,6 +2,7 @@ const Payment = require("../models/payment.model");
 const User = require("../models/user.model");
 const { recordAudit, getAuditLogs } = require("../services/audit.service");
 const { parsePagination, paginationMeta } = require("../utils/pagination");
+const { loadCaller } = require("../middleware/rbac.middleware");
 
 // List payments. Supports ?page=&pageSize=&search=&bill_id=&from=&to= —
 // omitting all of them returns the full list (legacy behaviour).
@@ -171,10 +172,24 @@ async function deletePayment(req, res) {
 }
 
 // Recent payments for a single unit owner (used by the owner home
-// page). Respects the owner's created_at anchor.
+// page). Respects the owner's created_at anchor. Unit owners may only
+// fetch their own unit's payments.
 async function getOwnerPayments(req, res) {
   try {
     const { unit_number } = req.params;
+
+    const caller = await loadCaller(req);
+
+    if (
+      caller &&
+      caller.type === "Unit Owner" &&
+      caller.unit_number !== unit_number
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to access this resource",
+      });
+    }
 
     const payments = await Payment.getRecentPaymentsForOwner(
       unit_number,
@@ -196,6 +211,16 @@ async function getOwnerPayments(req, res) {
 async function getUnpaidBills(req, res) {
   try {
     const { user_id } = req.params;
+
+    // Unit owners may only look at their own standings.
+    const caller = await loadCaller(req);
+
+    if (caller && caller.type === "Unit Owner" && caller.user_id !== user_id) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to access this resource",
+      });
+    }
 
     const owner = await User.findById(user_id);
 

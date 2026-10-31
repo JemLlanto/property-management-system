@@ -8,6 +8,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setUser } from "@/store/userDataSlice";
 import { setIsLoading } from "@/store/isLoading.slice";
 import { checkUser } from "@/utils/auth.helper";
+import { useStaffOnlyPage } from "@/utils/rbac.helper";
 import { formatDate } from "@/utils/date.helper";
 import { AuditLogProps, getAuditTrail } from "@/services/audit.service";
 
@@ -17,6 +18,7 @@ const AuditLogsPage = () => {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const isLoading = useAppSelector((state) => state.loading.isLoading);
+  useStaffOnlyPage();
 
   const [logs, setLogs] = useState<AuditLogProps[]>([]);
   const [page, setPage] = useState(1);

@@ -1,9 +1,23 @@
 "use client";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { useAppSelector } from "@/store/hooks";
+
+// Links only staff (Admin / Super Admin) can see. Unit owners are
+// limited to Dashboard, Payments and Settings — matching the server
+// RBAC policy.
+const STAFF_ONLY_HREFS = [
+  "/home/expenses",
+  "/home/user-management",
+  "/home/building-management",
+  "/home/bills-management",
+  "/home/settings/audit-logs",
+];
 
 const SideBarLinks = () => {
   const pathname = usePathname();
+  const userType = useAppSelector((state) => state.userData.type);
+  const isStaff = userType === "Admin" || userType === "Super Admin";
 
   const navLinks = [
     { name: "Dashboard", href: "/home" },
@@ -14,7 +28,7 @@ const SideBarLinks = () => {
     { name: "Bills Management", href: "/home/bills-management" },
     { name: "Audit Logs", href: "/home/settings/audit-logs" },
     { name: "Settings", href: "/home/settings" },
-  ];
+  ].filter((link) => isStaff || !STAFF_ONLY_HREFS.includes(link.href));
 
   const isLinkActive = (href: string) => {
     if (href === "/home") {

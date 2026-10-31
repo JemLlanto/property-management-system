@@ -19,11 +19,13 @@ import { useSortableColumns } from "@/hooks/useSortableColumns";
 import BillDetailsModal from "./BillDetailsModal";
 import BillModal from "./BillModal";
 import BillTable from "./BillTable";
+import { useStaffOnlyPage } from "@/utils/rbac.helper";
 
 const BillsManagementPage = () => {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const isLoading = useAppSelector((state) => state.loading.isLoading);
+  useStaffOnlyPage();
 
   const [bills, setBills] = useState<BillDataProps[]>([]);
   const [buildings, setBuildings] = useState<BuildingDataProps[]>([]);

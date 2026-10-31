@@ -16,11 +16,13 @@ import {
 } from "@/services/building.service";
 import BuildingModal from "./BuildingModal";
 import BuildingTable from "./BuildingTable";
+import { useStaffOnlyPage } from "@/utils/rbac.helper";
 
 const BuildingManagementPage = () => {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const isLoading = useAppSelector((state) => state.loading.isLoading);
+  useStaffOnlyPage();
 
   const [buildings, setBuildings] = useState<BuildingDataProps[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);

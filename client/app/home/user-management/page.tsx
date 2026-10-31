@@ -19,12 +19,14 @@ import { useSortableColumns } from "@/hooks/useSortableColumns";
 import AddUserModal from "./AddUserModal";
 import UserDetailsModal from "./UserDetailsModal";
 import UserTable from "./UserTable";
+import { useStaffOnlyPage } from "@/utils/rbac.helper";
 
 const UserManagementPage = () => {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const isLoading = useAppSelector((state) => state.loading.isLoading);
   const currentUser = useAppSelector((state) => state.userData);
+  useStaffOnlyPage();
 
   const [users, setUsers] = useState<UserDataProps[]>([]);
   const [buildings, setBuildings] = useState<BuildingDataProps[]>([]);

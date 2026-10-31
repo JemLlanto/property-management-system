@@ -16,11 +16,13 @@ import {
   getExpenses,
 } from "@/services/expense.service";
 import ExpenseModal from "./ExpenseModal";
+import { useStaffOnlyPage } from "@/utils/rbac.helper";
 
 const ExpensesPage = () => {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const isLoading = useAppSelector((state) => state.loading.isLoading);
+  useStaffOnlyPage();
 
   const [expenses, setExpenses] = useState<ExpenseDataProps[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);

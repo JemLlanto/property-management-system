@@ -103,12 +103,19 @@ const PaymentsPage = () => {
         if (response.success) {
           dispatch(setUser(response.user));
 
-          const [, billRes, userRes, buildingRes] = await Promise.all([
-            loadPayments(),
-            getBills(),
-            getUsers(),
-            getBuildings(),
-          ]);
+          // The lookups feed the Record Payment modal, which only staff
+          // can open — unit owners skip them (the endpoints are
+          // staff-only under RBAC and would 403 anyway).
+          const userType = response.user?.type ?? userData.type ?? "";
+          const isOwner = userType === "Unit Owner";
+
+          const [paymentsResult, billRes, userRes, buildingRes] =
+            await Promise.all([
+              loadPayments(),
+              isOwner ? Promise.resolve({ bills: [] }) : getBills(),
+              isOwner ? Promise.resolve({ users: [] }) : getUsers(),
+              isOwner ? Promise.resolve({ buildings: [] }) : getBuildings(),
+            ]);
 
           setBills(billRes.bills ?? []);
           setUsers(userRes.users ?? []);
