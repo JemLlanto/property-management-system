@@ -28,7 +28,7 @@ const HomeLayout = ({ children }: Props) => {
         <SideBarMobile />
         <SideBar />
       </aside>
-      <main className="h-full w-full px-5 md:px-10 lg:px-35 pt-20 overflow-y-auto overflow-x-hidden">
+      <main className="h-full w-full px-2 md:px-10 lg:px-35 pt-13.5 md:pt-20 overflow-y-auto overflow-x-hidden">
         {children}
       </main>
     </div>
