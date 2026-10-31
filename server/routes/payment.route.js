@@ -8,6 +8,11 @@ router.get("/", requireAuth, paymentController.getPayments);
 router.get("/unpaid", requireAuth, paymentController.getUnpaidOverview);
 router.get("/unpaid/:user_id", requireAuth, paymentController.getUnpaidBills);
 router.get(
+  "/owner/:unit_number",
+  requireAuth,
+  paymentController.getOwnerPayments,
+);
+router.get(
   "/bill/:bill_id/owners",
   requireAuth,
   paymentController.getBillOwners,

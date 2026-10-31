@@ -145,6 +145,26 @@ async function deletePayment(req, res) {
   }
 }
 
+// Recent payments for a single unit owner (used by the owner home
+// page). Respects the owner's created_at anchor.
+async function getOwnerPayments(req, res) {
+  try {
+    const { unit_number } = req.params;
+
+    const payments = await Payment.getRecentPaymentsForOwner(
+      unit_number,
+      req.query.limit,
+    );
+
+    return res.json({
+      success: true,
+      payments: payments.map(Payment.parsePayment),
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+}
+
 // Bill standings for a single unit owner (used by the user details modal):
 // missed bills, incoming bills whose cycle has not completed yet, and
 // bills already settled ahead by advance payments.
@@ -228,6 +248,7 @@ module.exports = {
   createPayment,
   deletePayment,
   getUnpaidBills,
+  getOwnerPayments,
   getUnpaidOverview,
   getBillOwners,
   getPaymentAuditTrail,

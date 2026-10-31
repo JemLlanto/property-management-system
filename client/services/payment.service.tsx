@@ -292,6 +292,26 @@ export const getBillOwnersReport = async (
   };
 };
 
+// Recent payments for a single unit owner — excludes payments made
+// before the owner's created_at anchor.
+export const getOwnerPayments = async (
+  unitNumber: string,
+  limit: number = 8,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+) => {
+  const result = await request(
+    "GET",
+    `/owner/${encodeURIComponent(unitNumber)}?limit=${limit}`,
+    undefined,
+    timeoutMs,
+  );
+
+  return {
+    success: result.success,
+    payments: (result.payments ?? []) as PaymentDataProps[],
+  };
+};
+
 // Record a payment. paid_at is optional — blank means "today"; a
 // YYYY-MM-DD value backdates the payment to when the money was received.
 export const createPayment = async (

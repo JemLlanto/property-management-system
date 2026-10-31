@@ -622,9 +622,39 @@ async function getBillOwnersReport(bill_id) {
   };
 }
 
+// Recent payments for a single unit owner. Payments recorded before
+// the owner's created_at anchor are excluded so an adjusted creation
+// date hides pre-dated records.
+async function getRecentPaymentsForOwner(unit_number, limit = 8) {
+  const owner = await prisma.user.findUnique({
+    where: { unit_number: String(unit_number) },
+    select: { created_at: true },
+  });
+
+  return prisma.payment.findMany({
+    where: {
+      paid_by_id: String(unit_number),
+      ...(owner?.created_at
+        ? { paid_at: { gte: new Date(owner.created_at) } }
+        : {}),
+    },
+    include: {
+      bill: {
+        select: { bill_id: true, name: true, due_date: true, amount: true },
+      },
+      recordedBy: {
+        select: { user_id: true, name: true, email: true },
+      },
+    },
+    orderBy: [{ paid_at: "desc" }, { payment_id: "desc" }],
+    take: Number(limit) || 8,
+  });
+}
+
 module.exports = {
   getAllPayments,
   getPaymentsPaginated,
+  getRecentPaymentsForOwner,
   createPayment,
   deletePayment,
   parsePayment,
