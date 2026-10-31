@@ -1,5 +1,16 @@
 const prisma = require("../lib/prisma");
+const { buildSearchWhere, buildSortOrder } = require("../utils/pagination");
 
+// Columns a client may sort the expense list by. recorded_by_name lives
+// on a to-one relation, so it maps through that.
+const EXPENSE_SORT_COLUMNS = {
+  reason: "reason",
+  amount: "amount",
+  occurred_at: "occurred_at",
+  recorded_by_name: { relation: "recordedBy", field: "name" },
+};
+
+// List all expenses with the recording user resolved
 async function getAllExpenses() {
   return prisma.expense.findMany({
     include: {
@@ -9,6 +20,61 @@ async function getAllExpenses() {
     },
     orderBy: [{ occurred_at: "desc" }, { expense_id: "desc" }],
   });
+}
+
+// A page of expenses, newest first, optionally filtered by a search
+// term (reason, description or recorder name). Sortable via
+// ?sort=<column>&order=asc|desc within EXPENSE_SORT_COLUMNS.
+async function getExpensesPaginated({
+  page = 1,
+  pageSize = 50,
+  skip = 0,
+  take = 50,
+  search = "",
+  sort = "",
+  order = "desc",
+} = {}) {
+  const where = buildSearchWhere(search, {
+    reason: "contains",
+    description: "contains",
+  });
+
+  const term = String(search ?? "").trim();
+
+  if (term) {
+    where.OR = [
+      ...(where.OR ?? []),
+      {
+        recordedBy: {
+          OR: [{ name: { contains: term } }, { email: { contains: term } }],
+        },
+      },
+    ];
+  }
+
+  const orderBy = buildSortOrder(sort, order, EXPENSE_SORT_COLUMNS, {
+    fallback: [{ occurred_at: "desc" }, { expense_id: "desc" }],
+    tiebreaker: { expense_id: "desc" },
+  });
+
+  const include = {
+    recordedBy: {
+      select: { user_id: true, name: true, email: true },
+    },
+  };
+
+  const [expenses, total] = await Promise.all([
+    prisma.expense.findMany({
+      where,
+      include,
+      orderBy,
+      skip,
+      take,
+    }),
+    prisma.expense.count({ where }),
+  ]);
+
+  return { expenses, total, page, pageSize };
 }
 
 function parseExpense(expense) {
@@ -98,6 +164,7 @@ async function deleteExpense(expense_id) {
 
 module.exports = {
   getAllExpenses,
+  getExpensesPaginated,
   createExpense,
   deleteExpense,
   parseExpense,

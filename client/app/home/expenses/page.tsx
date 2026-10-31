@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2 } from "lucide-react";
 import Swal from "sweetalert2";
 import { checkUser } from "@/utils/auth.helper";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -13,9 +12,11 @@ import {
   emptyExpenseForm,
   ExpenseDataProps,
   ExpenseFormDataProps,
-  getExpenses,
+  getExpensesPaginated,
 } from "@/services/expense.service";
+import { useSortableColumns } from "@/hooks/useSortableColumns";
 import ExpenseModal from "./ExpenseModal";
+import ExpenseTable from "./ExpenseTable";
 import { useStaffOnlyPage } from "@/utils/rbac.helper";
 
 const ExpensesPage = () => {
@@ -29,10 +30,42 @@ const ExpensesPage = () => {
   const [form, setForm] = useState<ExpenseFormDataProps>(emptyExpenseForm);
   const [errors, setErrors] = useState<Partial<ExpenseFormDataProps>>({});
 
-  const loadExpenses = async () => {
-    const result = await getExpenses();
-    setExpenses(result.expenses ?? []);
-  };
+  // Pagination + search state. Search is debounced so typing does not
+  // fire a request per keystroke.
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Column sorting — clicking a header cycles asc → desc → default
+  const sortable = useSortableColumns();
+
+  // Sorting changes the row order, so go back to the first page. Both
+  // state updates happen in the same handler, so the page and the sort
+  // reach the fetch together in one request.
+  const handleSort = useCallback(
+    (column: string) => {
+      sortable.toggleSort(column);
+      setPage(1);
+    },
+    [sortable],
+  );
+
+  // Load one page of expenses
+  const loadExpenses = useCallback(async () => {
+    const result = await getExpensesPaginated({
+      page,
+      pageSize,
+      search,
+      ...sortable.sortParams,
+    });
+
+    setExpenses(result.expenses);
+    setTotal(result.total);
+    setTotalPages(result.total_pages);
+  }, [page, pageSize, search, sortable.sortParams]);
 
   useEffect(() => {
     const validateUser = async () => {
@@ -59,6 +92,27 @@ const ExpensesPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Reload expenses when the page, search or sort changes
+  useEffect(() => {
+    loadExpenses();
+  }, [loadExpenses]);
+
+  // Debounce the search box — 300ms after the last keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1); // a new search restarts at the first page
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const openAddModal = () => {
+    setForm(emptyExpenseForm);
+    setErrors({});
+    setIsModalOpen(true);
+  };
+
   const handleDelete = async (expense: ExpenseDataProps) => {
     const result = await Swal.fire({
       icon: "warning",
@@ -79,6 +133,12 @@ const ExpensesPage = () => {
         setExpenses((prev) =>
           prev.filter((item) => item.expense_id !== expense.expense_id),
         );
+        Swal.fire({
+          icon: "success",
+          title: "Expense deleted",
+          timer: 1000,
+          showConfirmButton: false,
+        });
       }
     } catch (err) {
       console.error("Unexpected Error: ", err);
@@ -91,85 +151,44 @@ const ExpensesPage = () => {
   );
 
   return (
-    <div className="pt-2 pb-10">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
-        <div>
-          <h2 className="text-2xl font-semibold text-neutral-800">Expenses</h2>
-          <p className="text-sm text-neutral-500">
-            Total tracked spend: ₱{totalExpenses.toLocaleString()}
-          </p>
+    <div className="pt-2">
+      <ExpenseTable
+        isLoading={isLoading}
+        expenses={expenses}
+        openAddModal={openAddModal}
+        handleDelete={handleDelete}
+        searchInput={searchInput}
+        setSearchInput={setSearchInput}
+        sortable={{ ...sortable, toggleSort: handleSort }}
+      />
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="w-full mx-auto mt-3 flex items-center justify-between text-sm text-neutral-600">
+          <span>
+            {total} expense{total === 1 ? "" : "s"} · Page {page} of{" "}
+            {totalPages}
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1 || isLoading}
+              className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages || isLoading}
+              className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
         </div>
+      )}
 
-        <button
-          onClick={() => {
-            setForm(emptyExpenseForm);
-            setErrors({});
-            setIsModalOpen(true);
-          }}
-          className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 text-white px-4 py-2 text-sm font-medium hover:bg-neutral-700"
-        >
-          <Plus size={16} />
-          Add Expense
-        </button>
-      </div>
-
-      <div className="rounded-xl border border-neutral-200 bg-white overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-neutral-50 text-neutral-600">
-              <tr>
-                <th className="px-4 py-3 font-medium">Reason</th>
-                <th className="px-4 py-3 font-medium">Amount</th>
-                <th className="px-4 py-3 font-medium">Date</th>
-                <th className="px-4 py-3 font-medium">Description</th>
-                <th className="px-4 py-3 font-medium text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="px-4 py-8 text-center text-neutral-500"
-                  >
-                    No expenses recorded yet.
-                  </td>
-                </tr>
-              ) : (
-                expenses.map((expense) => (
-                  <tr
-                    key={expense.expense_id}
-                    className="border-t border-neutral-200"
-                  >
-                    <td className="px-4 py-3 font-medium text-neutral-800">
-                      {expense.reason}
-                    </td>
-                    <td className="px-4 py-3 text-neutral-700">
-                      ₱{Number(expense.amount).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-neutral-700">
-                      {new Date(expense.occurred_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 text-neutral-700">
-                      {expense.description || "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => handleDelete(expense)}
-                        className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-red-600 hover:bg-red-100"
-                      >
-                        <Trash2 size={14} />
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
+      {/* Record Expense Modal */}
       {isModalOpen && (
         <ExpenseModal
           form={form}

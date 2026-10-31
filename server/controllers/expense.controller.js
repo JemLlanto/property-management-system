@@ -1,12 +1,41 @@
 const Expense = require("../models/expense.model");
 const { recordAudit } = require("../services/audit.service");
+const { parsePagination, paginationMeta } = require("../utils/pagination");
 
+// List expenses. Supports ?page=&pageSize=&search=&sort=&order= —
+// omitting all of them returns the full list (legacy behaviour).
 async function getExpenses(req, res) {
   try {
-    const expenses = await Expense.getAllExpenses();
+    const supportsPagination =
+      req.query.page !== undefined ||
+      req.query.search !== undefined ||
+      req.query.sort !== undefined;
+
+    if (!supportsPagination) {
+      const expenses = await Expense.getAllExpenses();
+
+      return res.json({
+        success: true,
+        expenses: expenses.map(Expense.parseExpense),
+      });
+    }
+
+    const { page, pageSize, skip, take } = parsePagination(req.query);
+
+    const result = await Expense.getExpensesPaginated({
+      page,
+      pageSize,
+      skip,
+      take,
+      search: req.query.search,
+      sort: req.query.sort,
+      order: req.query.order,
+    });
+
     return res.json({
       success: true,
-      expenses: expenses.map(Expense.parseExpense),
+      expenses: result.expenses.map(Expense.parseExpense),
+      ...paginationMeta(result),
     });
   } catch (err) {
     console.log("err: ", err);

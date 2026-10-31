@@ -108,6 +108,48 @@ export const getExpenses = async (timeoutMs: number = DEFAULT_TIMEOUT_MS) => {
   return { success: result.success, expenses: result.expenses ?? [] };
 };
 
+// Query parameters accepted by the paginated expenses endpoint
+export interface ExpenseListQueryProps {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  sort?: string;
+  order?: "asc" | "desc";
+}
+
+// A page of expenses, newest first, with an optional search term.
+export const getExpensesPaginated = async (
+  query: ExpenseListQueryProps = {},
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+) => {
+  const params = new URLSearchParams();
+
+  if (query.page !== undefined) params.set("page", String(query.page));
+  if (query.pageSize !== undefined) {
+    params.set("pageSize", String(query.pageSize));
+  }
+  if (query.search) params.set("search", query.search);
+  if (query.sort) params.set("sort", query.sort);
+  if (query.order) params.set("order", query.order);
+
+  const result = await request(
+    "GET",
+    `?${params.toString()}`,
+    undefined,
+    timeoutMs,
+  );
+
+  return {
+    success: result.success,
+    expenses: (result.expenses ?? []) as ExpenseDataProps[],
+    page: result.page ?? 1,
+    pageSize: result.pageSize ?? 0,
+    total: result.total ?? 0,
+    total_pages: result.total_pages ?? 0,
+    has_more: result.has_more ?? false,
+  };
+};
+
 export const createExpense = async (
   formData: ExpenseFormDataProps,
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
