@@ -12,6 +12,7 @@ const STAFF_ONLY_HREFS = [
   "/home/user-management",
   "/home/building-management",
   "/home/bills-management",
+  "/home/violations",
   "/home/settings/audit-logs",
 ];
 
@@ -29,6 +30,7 @@ const SideBarLinks = () => {
     { name: "User Management", href: "/home/user-management" },
     { name: "Building Management", href: "/home/building-management" },
     { name: "Bills Management", href: "/home/bills-management" },
+    { name: "Violations", href: "/home/violations" },
     { name: "Audit Logs", href: "/home/settings/audit-logs" },
     { name: "Settings", href: "/home/settings" },
   ].filter((link) => isStaff || !STAFF_ONLY_HREFS.includes(link.href));
