@@ -13,6 +13,7 @@ const expenseRoutes = require("./routes/expense.route");
 const dashboardRoutes = require("./routes/dashboard.route");
 const auditRoutes = require("./routes/audit.route");
 const reminderRoutes = require("./routes/reminder.route");
+const violationRoutes = require("./routes/violation.route");
 const { requireAuth } = require("./middleware/auth.middleware");
 const { testConnection } = require("./lib/prisma");
 
@@ -37,6 +38,7 @@ app.use("/api/expenses", expenseRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/reminders", reminderRoutes);
+app.use("/api/violations", violationRoutes);
 
 // Example protected route
 app.get("/api/protected", requireAuth, (req, res) => {

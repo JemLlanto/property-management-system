@@ -21,6 +21,7 @@ model User {
 
   payments_recorded Payment[] @relation("RecordedBy")
   expenses_recorded Expense[] @relation("RecordedExpenseBy")
+  violations_recorded Violation[] @relation("RecordedViolationBy")
 
   @@index([building])
   @@map("users")
@@ -111,6 +112,39 @@ model Expense {
   @@index([recorded_by_id])
   @@index([occurred_at])
   @@map("expense")
+}
+
+// A violation recorded against a unit (e.g. noise, improper trash
+// disposal). Unit numbers are stored as plain values, not FKs, so the
+// record survives the owner's account being edited or deleted — the
+// same convention as payments.
+model Violation {
+  violation_id   Int       @id @default(autoincrement()) @map("violation_id")
+  unit_number    String    @map("unit_number") @db.VarChar(20)
+  // One of VIOLATION_TYPES, or "Other" with details in the description
+  violation_type String    @map("violation_type") @db.VarChar(50)
+  // "Minor" | "Major" | "Critical"
+  severity       String    @default("Minor") @map("severity") @db.VarChar(10)
+  // Free-text details — required when the type is "Other"
+  description    String?   @map("description") @db.Text
+  // When the violation happened (defaults to now, can be backdated)
+  occurred_at    DateTime  @default(now()) @map("occurred_at")
+  // "Open" | "Resolved"
+  status         String    @default("Open") @map("status") @db.VarChar(10)
+  // Required when resolving — what was done about it
+  resolution_remarks String? @map("resolution_remarks") @db.Text
+  resolved_at    DateTime? @map("resolved_at")
+  // The admin who recorded it
+  recorded_by_id String?   @map("recorded_by_id") @db.VarChar(12)
+  created_at     DateTime? @default(now()) @map("created_at")
+  updated_at     DateTime? @updatedAt @map("updated_at")
+
+  recordedBy User? @relation("RecordedViolationBy", fields: [recorded_by_id], references: [user_id], onDelete: SetNull)
+
+  @@index([unit_number])
+  @@index([status])
+  @@index([occurred_at])
+  @@map("violation")
 }
 
 // Append-only audit trail. Every create/update/delete of a bill, payment,
